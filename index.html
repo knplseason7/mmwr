@@ -1374,13 +1374,13 @@ function optimiseSquad(opts){
   const R2_COST=minBase(), R2_RAT=minRating();
   const byCost=[...C].sort((a,b)=>a.cost-b.cost), byRat=[...C].sort((a,b)=>a.rating-b.rating);
   function reserve(sel, n, list, key){
-    if(n<=0) return 0; const inSel=new Set(sel); const k={...cc}; sel.forEach(x=>{ k[x.g]++; k[x.cat]++; });
+    if(n<=0) return 0; const r2v=key==="cost"? R2_COST : R2_RAT; const inSel=new Set(sel); const k={...cc}; sel.forEach(x=>{ k[x.g]++; k[x.cat]++; });
     let tot=0, got=0;
     for(const y of list){ if(inSel.has(y)) continue; k[y.g]++; k[y.cat]++;
-      if(k.C<=R1.C && k.D<=R1.D && k.DA<=R1.DA && k.R<=R1.R && k.RSE<=R1.RSE && k.RSC<=R1.RSC && k.C+k.D<=R1.CD){ tot+=y[key]; if(++got>=n) return tot; }
+      if(k.C<=R1.C && k.D<=R1.D && k.DA<=R1.DA && k.R<=R1.R && k.RSE<=R1.RSE && k.RSC<=R1.RSC && k.C+k.D<=R1.CD){ tot+=Math.min(y[key],r2v); if(++got>=n) return tot; }
       else { k[y.g]--; k[y.cat]--; } }
     // places that can't be bought within round-1 limits are planned for round 2 (unsold players, no limits) at the rule's reserve
-    return tot + (n-got)*(key==="cost"? R2_COST : R2_RAT); }
+    return tot + (n-got)*r2v; }
   function score(sel){
     let v=0, cost=0, rat=0; const c={...coreCnt};
     sel.forEach(x=>{ v+=x.val; cost+=x.cost; rat+=x.rating; ["wk","ar","bowl","hit","anchor","newf"].forEach(k=>{ if(x[k]) c[k]++; }); });
@@ -1403,20 +1403,6 @@ function optimiseSquad(opts){
     for(let i=0;i<sel.length;i++){ if(lockedIds.has(sel[i].p.id)) continue; for(const y of C){ if(used.has(y)) continue; const trial=sel.slice(); trial[i]=y; const s=score(trial);
       if(s.v>best.v+0.01){ used.delete(sel[i]); used.add(y); sel=trial; best=s; improved=true; } } }
     if(sel.length<slots){ for(const y of C){ if(used.has(y)) continue; const s=score([...sel,y]); if(s.v>best.v+0.01){ sel=[...sel,y]; used.add(y); best=s; improved=true; break; } } } }
-  // Repair: if a place is still empty, swap one pick for a cheaper/lower-rated one so the 14th fits
-  let guard=0;
-  while(sel.length<slots && guard++<slots){
-    let bestTrial=null, bestV=-1e18;
-    const free=C.filter(y=>!used.has(y));
-    for(const y of free){ const s=score([...sel,y]); if(s.feasible && s.v>bestV){ bestV=s.v; bestTrial=[...sel,y]; } }
-    if(!bestTrial){
-      const cheap=free.slice().sort((a,b)=>(a.rating-b.rating)||(a.cost-b.cost)).slice(0,40);
-      for(let i=0;i<sel.length;i++){ if(lockedIds.has(sel[i].p.id)) continue; for(const y of cheap) for(const z of cheap){ if(y===z) continue;
-        const trial=sel.slice(); trial[i]=y; trial.push(z); const s=score(trial); if(s.feasible && s.v>bestV){ bestV=s.v; bestTrial=trial; } } }
-    }
-    if(!bestTrial) break;
-    sel=bestTrial; used.clear(); sel.forEach(x=>used.add(x)); best=score(sel);
-  }
   const r2=Math.max(0,slots-sel.length);
   const simRes=simulatePlan(sel, purseLeft - r2*R2_COST, 0.8);
   const total=sel.reduce((a,x)=>a+x.p50,0);

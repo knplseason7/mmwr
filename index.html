@@ -330,7 +330,7 @@ body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{displ
 <section class="view" id="v-setup">
   <div class="card" style="margin-bottom:14px;border-color:var(--gold)"><h3>Player data · KNPL-7 registration sheet</h3>
     <p class="mut" style="margin-top:0">Reads Skill Rating, category, district, every league season's team and CricHeroes stats (Player Stats tab) straight from your Google Sheet through your Google Sheets connection. Phone numbers and family details are not read. Re-sync after the NPL-5 update and when the final pool is out.</p>
-    <div class="row" id="dataConnect"><button class="btn" id="syncSheetBtn">Sync from Google Sheet</button></div><div id="syncSheetMsg" class="mut" style="margin-top:8px"></div>
+    <div class="row" id="dataConnect"><button class="btn" id="syncSheetBtn">Sync from Google Sheet</button></div><div id="syncSheetMsg" class="mut" style="margin-top:8px"></div><div id="dataStatus" class="explain" style="font-size:13px;margin-top:6px"></div>
     <details style="margin-top:10px"><summary class="mut" style="cursor:pointer">Using the GitHub web page? One-time data service setup</summary>
       <ol class="mut" style="font-size:13px"><li>Open <b>script.google.com</b> → New project, paste the code from <b>apps-script/Code.gs</b> in the mmwr repo.</li>
       <li>Project Settings → Script properties → add <b>LOGIN_USER</b> (your mobile number) and <b>LOGIN_PASS</b> (your password).</li>
@@ -344,7 +344,7 @@ body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{displ
     <div class="note">Base prices default to the Jan 2025 values (9,000 / 4,500 / 1,500). Update them from the Skill Rating page once confirmed.</div>
     <h3 style="margin-top:16px">Probable draft list</h3>
     <div class="row"><input type="file" id="draftFile" accept=".xlsx,.xls,.csv"><span id="draftMsg" class="mut"></span></div>
-    <div class="explain">Upload your PRABABLE_DRAFT_LIST.xlsx (Reg ID + Probable Draft Team). It stays on this device only — never in the web page or GitHub. Phone numbers are ignored.</div>
+    <div class="explain">The probable draft list is already built in (served after login). Upload a newer .xlsx only if it changes before teams submit — it stays on this device. Confirmed drafts from the registration sheet replace it automatically. Phone numbers are ignored.</div>
   </div>
   <div class="grid g2">
     <div class="card"><h3>Auction parameters</h3>
@@ -492,7 +492,7 @@ function load(){
   try{ loc = JSON.parse(localStorage.getItem('mm-knpl7-war-room')); }catch(e){}
   let pick = (loc && (!emb || (loc.savedAt||0) >= (emb.savedAt||0))) ? loc : emb;
   const s = JSON.parse(JSON.stringify(DEFAULT));
-  if(pick){ Object.assign(s.cfg, pick.cfg||{}); s.players = pick.players||{}; s.savedAt = pick.savedAt||0; s.syncedAt = pick.syncedAt||0; s.draftList = pick.draftList||null; }
+  if(pick){ Object.assign(s.cfg, pick.cfg||{}); s.players = pick.players||{}; s.savedAt = pick.savedAt||0; s.syncedAt = pick.syncedAt||0; s.draftList = pick.draftList||null; s.draftProbable = pick.draftProbable||null; s.draftFinal = pick.draftFinal||null; s.poolIds = pick.poolIds||null; }
   return s;
 }
 function persist(){ S.savedAt = Date.now(); try{ localStorage.setItem('mm-knpl7-war-room', JSON.stringify(S,(k,v)=>k==="_prof"?undefined:v)); }catch(e){} }
@@ -710,6 +710,7 @@ function renderTeams(){
 }
 
 function renderSetup(){
+  if($('dataStatus')) $('dataStatus').innerHTML = dataStatusHTML();
   document.querySelectorAll('[data-cfg]').forEach(el=>{ const k=el.dataset.cfg; if(el.type==="checkbox") el.checked=!!S.cfg[k]; else if(document.activeElement!==el) el.value=S.cfg[k]; });
   const pre=P().filter(p=>p.pre).sort((a,b)=>a.team.localeCompare(b.team));
   $('preList').innerHTML = pre.length?`<table>${pre.map(p=>`<tr><td>${esc(p.team)}</td><td>${esc(p.name)}</td><td>${tag(p.cat)}</td><td class="n">${p.rating}</td><td class="n">${fmt(p.price)}</td><td><button class="btn sm red" data-undo="${esc(p.id)}">✕</button></td></tr>`).join("")}</table>`:`<div class="mut">None added yet.</div>`;
@@ -899,6 +900,12 @@ async function syncSheet(){
       sheetRange("Registrations!BP2:BP400"), sheetRange("Registrations!BV2:BV400"), sheetRange("Registrations!BX2:BX400"),
       sheetRange("'Player Stats'!A2:A400"), sheetRange("'Player Stats'!J2:J400"), sheetRange("'Player Stats'!M2:Z400")
     ]);
+    try{ const [ds,ap]=await Promise.all([sheetRange("'Draft Submissions'!A1:F100"), sheetRange("'Auction Pool'!A2:A400")]);
+      const dh=(ds[0]||[]).map(String), ti=dh.indexOf('Team'), oi=dh.indexOf('Owner Reg ID'), di=dh.indexOf('Drafted Reg IDs'); const fin=[];
+      ds.slice(1).forEach(r=>{ const team=String(r[ti]||'').trim(); if(!team) return; if(oi>=0&&r[oi]) fin.push([String(r[oi]).trim(),'OWNER',team]); String(r[di]||'').split(/[,;\s]+/).filter(x=>/^KNPL7-/.test(x)).forEach(id=>fin.push([id,team])); });
+      const pool=ap.map(r=>String(r[0]||'').trim()).filter(x=>/^KNPL7-/.test(x));
+      applyMeta({draftFinal:fin, pool});
+    }catch(e){}
     const stats={}; psId.forEach((r,i)=>{ const id=(r[0]||"").trim(); if(!id) return; const v=psStats[i]||[];
       stats[id]={mvp:num(v[0]),mvpM:num(v[1]),m:num(v[2]),runs:num(v[3]),avg:num(v[4]),hs:num(v[5]),f4:num(v[6]),s6:num(v[7]),f50:num(v[8]),h100:num(v[9]),wk:num(v[10]),ov:overs(v[11]),ct:num(v[13]),type:(psType[i]||[])[0]||""}; });
     let n=0;
@@ -918,10 +925,27 @@ async function syncSheet(){
     msg.innerHTML=`<span class="ok">${n} registrations synced with CricHeroes stats · ${new Date().toLocaleString('en-IN')}</span>`;
   }catch(e){ msg.innerHTML=`<span class="bad">Couldn't read the sheet (${esc(e?.code||e?.message||"error")}). If asked, allow the page to use Google Sheets, then try again.</span>`; }
 }
+function draftSource(){
+  if(S.draftFinal && S.draftFinal.length) return {list:S.draftFinal, label:`confirmed drafts (${S.draftFinal.length})`, final:true};
+  if(S.draftList && S.draftList.length) return {list:S.draftList, label:`uploaded probable list (${S.draftList.length})`};
+  if(S.draftProbable && S.draftProbable.length) return {list:S.draftProbable, label:`probable list (${S.draftProbable.length})`};
+  if(SEED && SEED.draft && SEED.draft.length) return {list:SEED.draft, label:`probable list (${SEED.draft.length})`};
+  return {list:[], label:"none loaded"};
+}
 function applySeed(){
-  if(!SEED) return;
-  (S.draftList||[]).forEach(([id,t])=>{ const p=S.players[id]; if(!p) return; if(String(t).toUpperCase()==="OWNER") p.isOwner=true; else p.draftTeam=t; });
-  P().forEach(p=>{ if(p.ownerOf) p.isOwner=true; });
+  const src=draftSource();
+  P().forEach(p=>{ delete p.draftTeam; p.isOwner=!!p.ownerOf; p.inPool = S.poolIds ? S.poolIds.includes(p.id) : true; });
+  src.list.forEach(([id,t,team])=>{ const p=S.players[id]; if(!p) return; if(String(t).toUpperCase()==="OWNER"){ p.isOwner=true; if(team && !p.ownerOf) p.ownerOf=team; } else p.draftTeam=t; });
+}
+function isAvail(p){ return !p.team && !p.isOwner && !p.draftTeam && p.inPool!==false && !/reject/i.test(p.regStatus||""); }
+function applyMeta(j){
+  if(Array.isArray(j.draftProbable)) S.draftProbable=j.draftProbable;
+  S.draftFinal = Array.isArray(j.draftFinal) && j.draftFinal.length ? j.draftFinal : null;
+  S.poolIds = Array.isArray(j.pool) && j.pool.length ? j.pool : null;
+}
+function dataStatusHTML(){
+  const src=draftSource();
+  return `Draft list: <b>${src.label}</b>${src.final?"":" · switches to confirmed drafts automatically once teams submit"} · Auction pool: <b>${S.poolIds?`final (${S.poolIds.length} players)`:"not published yet — all approved registrations considered"}</b>`;
 }
 function ownerTeamOf(p){ return p.ownerOf || ""; }
 function teamCore(team){ // owner + drafted + bought
@@ -1109,7 +1133,7 @@ function renderVision(){
 function renderShortlist(){
   const box=$('shortlist'); if(!box) return;
   if(!INTEL.pct.rpm) buildIntel();
-  const av=P().filter(p=>!p.team && !p.isOwner && !p.draftTeam && !/reject/i.test(p.regStatus||"") && p.stats);
+  const av=P().filter(p=>isAvail(p) && p.stats);
   const rows=av.map(p=>({p,f:mmFit(p),m:marketEst(p),pr:profile(p)})).sort((a,b)=>b.f.score-a.f.score).slice(0,25);
   box.innerHTML = rows.length? `<table><tr><th>Player</th><th>Cat</th><th class="n">SR</th><th>Role</th><th>District</th><th class="n">Fit</th><th class="n">Est.</th></tr>${rows.map(r=>`<tr><td>${esc(r.p.name)}</td><td>${tag(r.p.cat)}</td><td class="n">${r.p.rating||"–"}</td><td style="font-size:12px">${r.pr.role}${r.pr.keeper?" · 🧤":""}${r.pr.hitter?" · 💥":""}${r.pr.anchor?" · ⚓":""}${r.pr.newFace?" · 🆕":""}</td><td style="font-size:12px">${esc(r.p.district||"")}</td><td class="n"><b>${r.f.score}</b></td><td class="n">${fmt(r.m.est)}</td></tr>`).join("")}</table>` : `<div class="mut">Sync the registration sheet in Setup &amp; Data to see your best-fit players.</div>`;
 }
@@ -1139,7 +1163,7 @@ const ASK_TOOLS = [
      if(i.category){ const c=String(i.category).toUpperCase(); a=a.filter(p=> c.length===1? GROUP(p.cat)===c : p.cat===c); }
      if(i.district){ const d=String(i.district).toUpperCase(); a=a.filter(p=>(p.district||"").toUpperCase().includes(d)); }
      if(i.zoneOnly) a=a.filter(p=>profile(p).zone>0);
-     if(i.availableOnly!==false) a=a.filter(p=>!p.team && !p.isOwner && !p.draftTeam);
+     if(i.availableOnly!==false) a=a.filter(isAvail);
      if(i.role){ const r=String(i.role).toLowerCase(); a=a.filter(p=>{const pr=profile(p); return r==="keeper"?pr.keeper: r==="hitter"?pr.hitter: r==="anchor"?pr.anchor: r==="newface"?pr.newFace: r==="youth"?pr.youth: pr.role.toLowerCase().includes(r);}); }
      let rows=a.map(compactPlayer); if(i.maxEst) rows=rows.filter(r=>r.marketEst<=i.maxEst);
      const k=i.sort==="rating"?"rating":i.sort==="marketEst"?"marketEst":"fit"; rows.sort((x,y)=>(y[k]||0)-(x[k]||0));
@@ -1212,7 +1236,7 @@ function optimiseSquad(opts){
   const purseLeft = S.cfg.purse - core.reduce((a,q)=>a+(q.price||0),0);
   const cap = S.cfg.cap + (S.cfg.useBonus?S.cfg.bonus:0);
   const ratingLeft = cap - core.reduce((a,q)=>a+(q.rating||0),0);
-  const pool=P().filter(p=>!p.team && !p.isOwner && !p.draftTeam && !/reject/i.test(p.regStatus||"") && p.rating>0 && p.stats && !(opts.zoneOnly && profile(p).zone===0));
+  const pool=P().filter(p=>isAvail(p) && p.rating>0 && p.stats && !(opts.zoneOnly && profile(p).zone===0));
   const C = pool.map(p=>{ const pr=profile(p); const est=marketEst(p).est; const base=p.base||catBase(p.cat);
     const cost = opts.priceMode==="base"? base : Math.round(Math.max(base, est*(1+opts.buffer/100))/100)*100;
     return {p,pr,cost,rating:p.rating,val:mmBaseFit(p)+p.rating*0.45,R:GROUP(p.cat)==="R",wk:pr.keeper,ar:pr.role==="All-rounder",bowl:pr.role==="Bowler",hit:pr.hitter,anchor:pr.anchor,newf:pr.newFace}; });
@@ -1259,7 +1283,7 @@ function renderBestSquad(){
    <div class="row mut" style="font-size:13px;margin-bottom:8px">Est. spend <b style="color:var(--ink)">${fmt(r.best.cost)}</b> of ${fmt(r.purseLeft)} left · Skill Rating <b style="color:var(--ink)">${fmt(r.best.rat)}</b> of ${fmt(r.ratingLeft)} room · ${r.sel.length} picks for ${r.slots} slots</div>
    <div class="scroll" style="max-height:520px"><table><tr><th>Player</th><th>Cat</th><th class="n">SR</th><th>Role</th><th class="n">Pts</th></tr>${r.core.map(q=>rowP(q,true)).join("")}${[...r.sel].sort((a,b)=>b.cost-a.cost).map(x=>rowP(x.p,false,x.cost)).join("")}</table></div>
    <div class="row" style="margin-top:10px"><button class="btn sm" id="bsStar">Mark these picks as ★★★ targets</button><span class="mut" style="font-size:12px">Back-ups by fit: ${r.alts.slice(0,8).map(x=>esc(x.p.name)).join(", ")}</span></div>
-   <div class="note">Excludes owners, every team's probable drafts and players already sold. Prices are ${opts.priceMode==="base"?"base prices (best case)":`market estimates${opts.buffer?` +${opts.buffer}%`:""}`}. Rebuild after each sale — it re-plans around your current squad and purse.</div>`;
+   <div class="note">Excludes owners, every team's ${draftSource().final?"confirmed":"probable"} drafts, players already sold${S.poolIds?" and anyone outside the final pool":""}. Prices are ${opts.priceMode==="base"?"base prices (best case)":`market estimates${opts.buffer?` +${opts.buffer}%`:""}`}. Rebuild after each sale — it re-plans around your current squad and purse.</div>`;
   $('bsStar').onclick=()=>{ r.sel.forEach(x=>{ x.p.star=3; if(!x.p.myVal) x.p.myVal=x.cost; }); persist(); renderPool(); renderDash(); toast(`${r.sel.length} players marked ★★★ with walk-away prices`); };
 }
 
@@ -1362,10 +1386,10 @@ const QUICK = [
   ["Who can outbid us right now?", ()=>{ const me=teamState(MY).maxBid; const r=TEAMS.filter(x=>x!==MY).map(x=>({x,t:teamState(x)})).sort((a,b)=>b.t.maxBid-a.t.maxBid);
      return `Our max bid: **${fmt(me)}**.\n`+r.slice(0,6).map(o=>`- ${o.x}: max ${fmt(o.t.maxBid)} · ${o.t.slots} slots · rating room ${fmt(o.t.cap-o.t.rating)}`).join("\n"); }],
   ...[["keepers","keeper"],["proper bowlers","Bowler"],["all-rounders","All-rounder"],["hitters","hitter"],["new faces","newFace"]].map(([l,k])=>[`Best available ${l} for us`, ()=>{
-     const a=P().filter(p=>!p.team&&!p.isOwner&&!p.draftTeam&&p.stats&&!/reject/i.test(p.regStatus||"")).filter(p=>{const pr=profile(p); return k==="keeper"?pr.keeper:k==="hitter"?pr.hitter:k==="newFace"?pr.newFace:pr.role===k;})
+     const a=P().filter(p=>isAvail(p)&&p.stats).filter(p=>{const pr=profile(p); return k==="keeper"?pr.keeper:k==="hitter"?pr.hitter:k==="newFace"?pr.newFace:pr.role===k;})
        .map(p=>({p,f:mmFit(p).score,m:marketEst(p).est})).sort((x,y)=>y.f-x.f).slice(0,6);
      return a.length? a.map(o=>`- **${o.p.name}** (${o.p.cat}, SR ${o.p.rating}, ${o.p.district||"–"}) — fit ${o.f}, ≈ ${fmt(o.m)}`).join("\n") : "None found in the available pool."; }]),
-  ["Best-value Rising Stars", ()=>{ const a=P().filter(p=>!p.team&&!p.isOwner&&!p.draftTeam&&p.stats&&GROUP(p.cat)==="R").map(p=>({p,f:mmFit(p).score,m:marketEst(p).est})).sort((x,y)=>(y.f/Math.sqrt(y.m))-(x.f/Math.sqrt(x.m))).slice(0,8);
+  ["Best-value Rising Stars", ()=>{ const a=P().filter(p=>isAvail(p)&&p.stats&&GROUP(p.cat)==="R").map(p=>({p,f:mmFit(p).score,m:marketEst(p).est})).sort((x,y)=>(y.f/Math.sqrt(y.m))-(x.f/Math.sqrt(x.m))).slice(0,8);
      return a.map(o=>`- **${o.p.name}** (${o.p.cat}, SR ${o.p.rating}) — fit ${o.f}, ≈ ${fmt(o.m)}`).join("\n")||"No Rising Stars available."; }]
 ];
 function renderQuick(){
@@ -1408,7 +1432,7 @@ async function doLogin(){
     const j=await r.json();
     if(!j.ok){ msg.innerHTML=`<span class="bad">${j.error==="bad_login"?"Mobile number or password is wrong.":"Login failed ("+esc(j.error||"error")+")."}</span>`; $('lgGo').disabled=false; return; }
     try{ localStorage.setItem('mmwr-api', JSON.stringify({url})); localStorage.setItem('mmwr-session','1'); }catch(e){}
-    const n=applyPlayers(j.players||[]);
+    applyMeta(j); const n=applyPlayers(j.players||[]);
     $('loginOverlay').style.display='none'; document.body.classList.remove('locked');
     toast(`Welcome — ${n} players loaded`);
   }catch(e){ msg.innerHTML=`<span class="bad">Couldn't reach the data service. Check the URL and your connection.</span>`; }

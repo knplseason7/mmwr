@@ -769,7 +769,7 @@ function renderLive(){
       <div><div class="mut">Base</div><div class="big" style="font-size:36px">${fmt(p.base)}</div></div>
     </div>${k6Label(p.name)?`<div class="pill" style="margin-top:10px">${esc(k6Label(p.name))}</div>`:""}${p.note?`<div class="note">${esc(p.note)}</div>`:""}${p.team?`<div class="verdict v-care">Already sold to ${esc(p.team)} for ${fmt(p.price)}.</div>`:""}`;
   let cls,msg;
-  let rec=Infinity; try{ if(p.stats && typeof mmFit==='function'){ const ff=mmFit(p), mk=marketEst(p); rec=roundBidDown(mk.est*(0.7+ff.score/100*0.8)); } }catch(e){}
+  let rec=Infinity; try{ if(p.stats && typeof mmFit==='function'){ const ff=mmFit(p), mk=marketEst(p); rec=roundBidDown(mk.est*(0.7+ff.score/100*0.8)); const pl=LAST_PLAN&&LAST_PLAN.sel.find(x=>x.p.id===p.id); if(pl) rec=pl.max; rec=Math.max(BASE_PT[p.cat]||0, rec); } }catch(e){}
   const ceiling = Math.min(t.maxBid, myVal||Infinity, rec);
   if(!c.ok){ cls="v-stop"; msg=`DON'T BID — ${c.why}.`; }
   else if(bid>t.maxBid){ cls="v-stop"; msg=`STOP — ${fmt(bid)} is over our max bid of ${fmt(t.maxBid)}.`; }
@@ -1129,11 +1129,16 @@ function renderIntel(p){
   const pr=profile(p), d=pr.d, s=p.stats, fit=mmFit(p), mk=marketEst(p), t=teamState(MY);
   const rivals=TEAMS.filter(x=>x!==MY).map(x=>rivalInterest(x,p)).sort((a,b)=>(b.ok-a.ok)||(b.score-a.score));
   const hot=rivals.filter(r=>r.ok && r.score>=35);
-  const rivalCeil = hot.length? Math.max(...hot.map(r=>Math.min(r.maxBid, roundBidDown(mk.est*(0.75+r.score/100*0.8))))) : (p.base||catBase(p.cat));
-  const myCeil = Math.min(t.maxBid, roundBidDown(mk.est*(0.7+fit.score/100*0.8)));
-  const base=p.base||catBase(p.cat);
+  const sp = simPay(p); const rivalCeil = sp.p50;
+  let myCeil = Math.min(t.maxBid, roundBidDown(mk.est*(0.7+fit.score/100*0.8)));
+  const base=BASE_PT[p.cat]||p.base||2000;
+  const planned = LAST_PLAN && LAST_PLAN.sel.find(x=>x.p.id===p.id);
+  if(planned) myCeil=planned.max;
+  const tooLow = myCeil < base;
+  myCeil = Math.max(base, Math.min(t.maxBid, myCeil));
   let action, cls;
   if(!canTake(MY,p).ok){ action=`Can't take him: ${canTake(MY,p).why}.`; cls="v-stop"; }
+  else if(tooLow && !planned){ action=`Not worth more than base for our plan (fit ${fit.score}). Bid only the base ${fmt(base)} if you need to fill a place — otherwise let him go.`; cls="v-care"; }
   else if(!hot.length){ action=`Low competition — open at base ${fmt(base)} and hold. Nobody else shows strong interest.`; cls="v-go"; }
   else if(fit.score>=60 && myCeil>=rivalCeil){ action=`Go for him. Strong fit (${fit.score}). Expect rivals to stop around ${fmt(rivalCeil)}; you can go to ${fmt(myCeil)}.`; cls="v-go"; }
   else if(fit.score>=60){ action=`Good fit, but ${esc(hot[0].team)} may push past your ceiling of ${fmt(myCeil)}. Bid to ${fmt(myCeil)}, then let go.`; cls="v-care"; }
@@ -1149,8 +1154,8 @@ function renderIntel(p){
     <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0">
       <div class="catbox"><div class="mut" style="font-size:12px">Fit for Mavericks</div><div class="v" style="color:${fit.score>=60?'var(--green)':fit.score>=40?'var(--amber)':'var(--red)'}">${fit.score}</div></div>
       <div class="catbox"><div class="mut" style="font-size:12px">Market estimate</div><div class="v">${fmt(mk.est)}</div></div>
-      <div class="catbox"><div class="mut" style="font-size:12px">Rivals likely stop</div><div class="v">${fmt(rivalCeil)}</div></div>
-      <div class="catbox"><div class="mut" style="font-size:12px">Your ceiling</div><div class="v" style="color:var(--gold2)">${fmt(myCeil)}</div></div>
+      <div class="catbox"><div class="mut" style="font-size:12px">Expected price</div><div class="v">${fmt(rivalCeil)}</div><div class="mut" style="font-size:11px">likely ${fmt(sp.p25)}–${fmt(sp.p80)}</div></div>
+      <div class="catbox"><div class="mut" style="font-size:12px">Your max${planned?" (squad plan)":""}</div><div class="v" style="color:var(--gold2)">${fmt(myCeil)}</div><div class="mut" style="font-size:11px">wins in ${Math.round(sp.pay.filter(v=>v<=myCeil).length/SIM_N*100)}% of simulations</div></div>
     </div>
     <div class="verdict ${cls}">${action}</div>
     <div class="note">Why this fit: ${esc(fit.why.join(" · "))}. ${mmA.links.length?`Played with ${mmA.links.map(l=>`${esc(l.q.name)} (${l.c.join(", ")})`).join("; ")}.`:""} Market estimate from ${mk.src}.</div>
@@ -1225,6 +1230,8 @@ const ASK_TOOLS = [
    inputSchema:{type:"object",properties:{team:{type:"string"}},required:["team"]},
    execute:({team})=>{ const T=TEAMS.find(x=>sameTeam(x,team)||normTeam(x).includes(normTeam(team))); if(!T) throw new Error("Unknown team "+team);
      const t=teamState(T); return {team:T,purseLeft:t.purseLeft,maxBid:t.maxBid,ratingUsed:t.rating,cap:t.cap,nextPickMaxRating:t.maxRate,slots:t.slots,categories:t.g,squad:t.ps.map(q=>({name:q.name,cat:q.cat,rating:q.rating,price:q.price||0}))}; }},
+  {name:"get_squad_plan", description:"The latest generated Mavericks squad plan: each pick with category, Skill Rating, simulated expected price and range, the recommended max bid, win chance, and rivals likely to bid. Generate it on the Dashboard first.",
+   execute:()=> LAST_PLAN? {picks:LAST_PLAN.sel.map(x=>({name:x.p.name,cat:x.p.cat,rating:x.p.rating,base:x.base,expected:x.p50,range:[x.p25,x.p80],maxBid:x.max,winChance:x.win,rivals:x.rivals}))} : {error:"No plan generated yet — press Generate squad on the Dashboard."}},
   {name:"all_teams", description:"Snapshot of all 16 teams: purse left, max bid, rating room, slots and category counts.",
    execute:()=>TEAMS.map(x=>{const t=teamState(x); return {team:x,purseLeft:t.purseLeft,maxBid:t.maxBid,ratingRoom:t.cap-t.rating,nextPickMaxRating:t.maxRate,slots:t.slots,C:t.g.C,D:t.g.D,R:t.g.R};})},
   {name:"auction_history_summary", description:"Benchmarks from past auctions: KNPL Jan 2025 full auction category price stats, Jan 2026 top-up, CBL 2025, and which teams spent most on Conquerors.",
@@ -1264,6 +1271,50 @@ $('askClear').onclick=()=>{ if(askAbort) askAbort.abort(); askMsgs=[]; askBusy=f
 $('askSend').onclick=()=>{ const v=$('askInput').value; $('askInput').value=''; askSend(v); };
 $('askInput').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); $('askSend').click(); } });
 
+/* ================= AUCTION SIMULATION ================= */
+const SIM_N = 1000;
+let _sig=null, _simCache={key:"",map:{}}, LAST_PLAN=null;
+function gauss(){ let u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+function priceSigma(){
+  if(_sig) return _sig; _sig={C:0.35,D:0.45,R:0.5};
+  try{ ["C","D","R"].forEach(g=>{ const a=k25Prices(g).filter(x=>x>0); if(a.length<8) return; const m=med(a); const l=a.map(x=>Math.log(x/m)); const mu=avgOf(l); _sig[g]=Math.min(0.8,Math.max(0.2,Math.sqrt(avgOf(l.map(x=>(x-mu)*(x-mu)))))); }); }catch(e){}
+  return _sig;
+}
+function simKey(){ return [S.savedAt,S.syncedAt,P().filter(p=>p.team).length].join("|"); }
+/* Price Mavericks would have to pay to win p in each simulated auction: highest rival valuation + one bid step (min: base point) */
+function simPay(p){
+  const key=simKey(); if(_simCache.key!==key) _simCache={key,map:{}};
+  if(_simCache.map[p.id]) return _simCache.map[p.id];
+  const base=BASE_PT[p.cat]||2000, est=Math.max(base, marketEst(p).est), sig=priceSigma()[GROUP(p.cat)]||0.45;
+  const rivals=TEAMS.filter(x=>x!==MY).map(x=>rivalInterest(x,p)).filter(r=>r.ok).map(r=>({team:r.team,score:r.score,m:0.55+r.score/100*0.9,cap:r.maxBid}));
+  const pay=new Array(SIM_N), top={};
+  for(let s=0;s<SIM_N;s++){
+    let hi=0, who="";
+    for(const r of rivals){ const v=Math.min(r.cap, est*r.m*Math.exp(sig*gauss())); if(v>hi){hi=v;who=r.team;} }
+    if(hi<base){ pay[s]=base; } else { const b=roundBidDown(hi); pay[s]=b+bidStep(b); top[who]=(top[who]||0)+1; }
+  }
+  const sorted=[...pay].sort((a,b)=>a-b), q=f=>sorted[Math.min(SIM_N-1,Math.floor(f*SIM_N))];
+  const res={pay, p25:q(.25), p50:q(.5), p75:q(.75), p80:q(.8), p90:q(.9), p95:q(.95), base, est,
+    topRivals:Object.entries(top).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([t,c])=>{ const r=rivals.find(x=>x.team===t); return {team:t, share:Math.round(c/SIM_N*100), score:r?r.score:0, likelyMax:Math.max(base, Math.min(r?r.cap:0, roundBidDown(est*(r?r.m:1)*Math.exp(0.84*sig))))}; })};
+  _simCache.map[p.id]=res; return res;
+}
+/* Joint plan: for each pick, the highest bid that still lets the other picks be bought in ≥ conf of simulated auctions */
+function simulatePlan(picks, purseLeft, conf){
+  const pays=picks.map(x=>simPay(x.p).pay);
+  const tot=new Array(SIM_N).fill(0); pays.forEach(a=>a.forEach((v,s)=>tot[s]+=v));
+  const okAll=tot.filter(v=>v<=purseLeft).length/SIM_N;
+  const t=teamState(MY);
+  picks.forEach((x,i)=>{
+    const budget=tot.map((v,s)=>purseLeft-(v-pays[i][s])).sort((a,b)=>a-b);
+    let mx=roundBidDown(budget[Math.floor((1-conf)*SIM_N)]);
+    const base=BASE_PT[x.p.cat]||2000;
+    mx=Math.max(base, Math.min(mx, t.maxBid||mx));
+    const spx=simPay(x.p); x.headroom=mx; x.max=Math.max(base, Math.min(mx, spx.p90)); x.win=Math.round(pays[i].filter(v=>v<=mx).length/SIM_N*100);
+    const sp=simPay(x.p); x.p50=sp.p50; x.p25=sp.p25; x.p80=sp.p80; x.rivals=sp.topRivals;
+  });
+  return {okAll:Math.round(okAll*100)};
+}
+
 /* ================= BEST SQUAD BUILDER (rules-based) ================= */
 function mmBaseFit(p){
   const pr=profile(p); let s=0;
@@ -1290,7 +1341,7 @@ function optimiseSquad(opts){
   core.forEach(q=>{ cc[GROUP(q.cat)]++; if(cc[q.cat]!=null) cc[q.cat]++; });
   const pool=P().filter(p=>isAvail(p) && p.rating>0 && p.stats && BASE_PT[p.cat] && !(opts.zoneOnly && profile(p).zone===0));
   const C = pool.map(p=>{ const pr=profile(p); const base=BASE_PT[p.cat]; const est=marketEst(p).est;
-    const cost = opts.priceMode==="base"? base : Math.max(base, roundBidDown(est));
+    const cost = opts.priceMode==="base"? base : simPay(p).p75;
     return {p,pr,cost,base,est,rating:p.rating,val:mmBaseFit(p)+p.rating*0.45,cat:p.cat,g:GROUP(p.cat),wk:pr.keeper,ar:pr.role==="All-rounder",bowl:pr.role==="Bowler",hit:pr.hitter,anchor:pr.anchor,newf:pr.newFace}; });
   const coreCnt={wk:0,ar:0,bowl:0,hit:0,anchor:0,newf:0};
   core.forEach(q=>{const pr=profile(q); if(pr.keeper)coreCnt.wk++; if(pr.role==="All-rounder")coreCnt.ar++; if(pr.role==="Bowler")coreCnt.bowl++; if(pr.hitter)coreCnt.hit++; if(pr.anchor)coreCnt.anchor++; if(pr.newFace)coreCnt.newf++;});
@@ -1336,38 +1387,40 @@ function optimiseSquad(opts){
     if(!bestTrial) break;
     sel=bestTrial; used.clear(); sel.forEach(x=>used.add(x)); best=score(sel);
   }
-  // Max bid per pick: share the spare points by value, keep every max on the bid ladder, total within the purse
-  const slack=Math.max(0, purseLeft-best.cost), Wt=sel.reduce((a,x)=>a+Math.max(1,x.val),0);
-  sel.forEach(x=>{ x.max = Math.max(x.base, roundBidDown(x.cost + slack*Math.max(1,x.val)/Wt)); x.rivals=rivalBidders(x.p, x.est); });
-  let total=sel.reduce((a,x)=>a+x.max,0); // fix rounding overflow
-  for(const x of [...sel].sort((a,b)=>b.max-a.max)){ if(total<=purseLeft) break; const nm=Math.max(x.base, roundBidDown(x.max-bidStep(x.max))); total-=x.max-nm; x.max=nm; }
-  return {sel, core, coreCost, best, purseLeft, ratingLeft, cap, slots, totalMax:total, alts:C.filter(x=>!used.has(x)).sort((a,b)=>b.val-a.val)};
+  const simRes=simulatePlan(sel, purseLeft, 0.8);
+  const total=sel.reduce((a,x)=>a+x.p50,0);
+  LAST_PLAN={sel,at:Date.now()};
+  return {sel, core, coreCost, best, purseLeft, ratingLeft, cap, slots, totalMax:total, okAll:simRes.okAll, alts:C.filter(x=>!used.has(x)).sort((a,b)=>b.val-a.val)};
 }
-function renderBestSquad(){
+function renderBestSquadRun(opts){ opts._go=true; renderBestSquad(opts); }
+function renderBestSquad(passed){
   const box=$('bestSquad'); if(!box) return;
   if(!P().some(p=>p.stats)){ box.innerHTML='<div class="mut">Load player data first (⚙️ Setup &amp; Data).</div>'; return; }
   if(!draftSource().list.length){ box.innerHTML='<div class="verdict v-stop">The draft list isn\'t loaded, so other teams\' drafted players can\'t be excluded. '+(IN_CLAUDE?'Press Sync in ⚙️ Setup &amp; Data.':'Go to ⚙️ Setup &amp; Data → <b>Refresh player data</b> and log in again.')+'</div>'; return; }
-  const opts={priceMode:$('bsPrice').value, keep:+$('bsKeep').value||0, zoneOnly:$('bsZone').checked};
+  const opts=passed&&passed._go? passed : {priceMode:$('bsPrice').value, keep:+$('bsKeep').value||0, zoneOnly:$('bsZone').checked};
+  if(!opts._go){ box.innerHTML='<div class="mut">🎲 Simulating the auction 1,000 times for every available player…</div>'; setTimeout(()=>renderBestSquadRun(opts),30); return; }
   const r=optimiseSquad(opts);
   if(!r.best){ box.innerHTML=`<div class="mut">${r.msg||"Nothing to build."}</div>`; return; }
   const V=S.cfg.vision||VISION_DEFAULT, c=r.best.c;
   const all=[...r.core.map(q=>({p:q,frozen:true,pts:r.coreCost(q)})), ...[...r.sel].sort((a,b)=>CAT_RANK[b.cat]-CAT_RANK[a.cat]||b.max-a.max).map(x=>({p:x.p,x}))];
   const k={C:0,D:0,R:0,CV:0,CC:0,DA:0,DC:0,RSE:0,RSC:0}; all.forEach(o=>{k[GROUP(o.p.cat)]++; if(k[o.p.cat]!=null)k[o.p.cat]++;});
-  const ratTot=all.reduce((a,o)=>a+(o.p.rating||0),0), ptsTot=all.reduce((a,o)=>a+(o.frozen?o.pts:o.x.max),0);
+  const ratTot=all.reduce((a,o)=>a+(o.p.rating||0),0), ptsTot=all.reduce((a,o)=>a+(o.frozen?o.pts:o.x.p50),0);
   const chk=(l,ok)=>`<span class="pill" style="border-color:${ok?'var(--green)':'var(--red)'}">${ok?"✓":"✗"} ${l}</span>`;
   const rows=all.map((o,i)=>{ const p=o.p, pr=profile(p);
     const who=o.frozen?`<span class="tag t-NA">${p.ownerOf?"OWNER":p.team?"BOUGHT":"DRAFT"}</span>`:"";
-    const comp = o.frozen? '<span class="mut">— fixed —</span>' : (o.x.rivals.length? o.x.rivals.slice(0,3).map(rv=>`<div style="white-space:nowrap"><b>${esc(rv.team.replace(/ of .*/,""))}</b> <span class="mut">(${rv.score})</span> → ~${fmt(rv.max)}${rv.max>o.x.max?' <span class="bad">⚠</span>':''}</div>`).join("") : '<span class="ok">Low competition</span>');
+    const comp = o.frozen? '<span class="mut">— fixed —</span>' : (o.x.rivals.length? o.x.rivals.map(rv=>`<div style="white-space:nowrap"><b>${esc(rv.team.replace(/ of .*/,""))}</b> <span class="mut">top bidder ${rv.share}%</span> → up to ~${fmt(rv.likelyMax)}${rv.likelyMax>o.x.max?' <span class="bad">⚠</span>':''}</div>`).join("") : '<span class="ok">No rival expected above base</span>');
     return `<tr class="${o.frozen?"mine":""}"><td class="mut">${i+1}</td><td><b>${esc(p.name)}</b> ${who}<div class="mut" style="font-size:11px">${esc(p.district||"")} · ${pr.role}${pr.keeper?" · 🧤":""}${pr.hitter?" · 💥":""}${pr.anchor?" · ⚓":""}${pr.newFace?" · 🆕":""}${pr.youth?" · 🌱":""}</div></td>
       <td>${tag(p.cat)}</td><td class="n">${p.rating||"–"}</td>
       <td class="n">${o.frozen?'<span class="mut">'+fmt(o.pts)+'</span>':fmt(o.x.base)}</td>
-      <td class="n">${o.frozen?"":fmt(o.x.est)}</td>
-      <td class="n"><b style="color:var(--gold2);font-size:15px">${o.frozen?fmt(o.pts):fmt(o.x.max)}</b></td>
+      <td class="n">${o.frozen?"":fmt(o.x.p50)+'<div class="mut" style="font-size:11px">'+fmt(o.x.p25)+'–'+fmt(o.x.p80)+'</div>'}</td>
+      <td class="n"><b style="color:var(--gold2);font-size:15px">${o.frozen?fmt(o.pts):fmt(o.x.max)}</b>${o.frozen||o.x.headroom<=o.x.max?"":`<div class="mut" style="font-size:11px">budget allows ${fmt(o.x.headroom)}</div>`}</td>
+      <td class="n">${o.frozen?"":`<b class="${o.x.win>=70?"ok":o.x.win>=40?"warn":"bad"}">${o.x.win}%</b>`}</td>
       <td style="font-size:12px">${comp}</td></tr>`; }).join("");
   box.innerHTML = `
    <div class="row" style="margin-bottom:8px">
      ${chk(`14 players (${all.length})`, all.length===S.cfg.squad)}
-     ${chk(`Points ${fmt(ptsTot)} / ${fmt(S.cfg.purse)}`, ptsTot<=S.cfg.purse)}
+     ${chk(`Expected spend ${fmt(ptsTot)} / ${fmt(S.cfg.purse)}`, ptsTot<=S.cfg.purse)}
+     ${chk(`Plan completes in ${r.okAll}% of simulations`, r.okAll>=70)}
      ${chk(`Skill Rating ${ratTot} / ${r.cap}`, ratTot<=r.cap)}
      ${chk(`Conqueror ${k.C}/1`, k.C<=1)} ${chk(`Dominator ${k.D}/3 (Apex ${k.DA}/1)`, k.D<=3&&k.DA<=1)}
      ${chk(`Rising Stars ${k.R} (Elite ${k.RSE}/7 · Core ${k.RSC}/4)`, k.R>=8&&k.RSE<=7&&k.RSC<=4)}
@@ -1377,17 +1430,17 @@ function renderBestSquad(){
      ${chk(`💥 Hitters ${c.hit}/${V.hit}`, c.hit>=V.hit)} ${chk(`⚓ Anchor ${c.anchor}/${V.anchor}`, c.anchor>=V.anchor)} ${chk(`🆕 New faces ${c.newf}/${V.newf}`, c.newf>=V.newf)}
    </div>
    <div style="overflow-x:auto"><table>
-     <tr><th>#</th><th>Player</th><th>Cat</th><th class="n">SR</th><th class="n">Base pt</th><th class="n">Est. price</th><th class="n">Your max</th><th>Teams that want him → likely max</th></tr>
+     <tr><th>#</th><th>Player</th><th>Cat</th><th class="n">SR</th><th class="n">Base pt</th><th class="n">Expected price<div style="font-weight:400;text-transform:none">likely range</div></th><th class="n">Your max</th><th class="n">Win chance</th><th>Rivals likely to bid → how far</th></tr>
      ${rows}
-     <tr><td></td><td><b>Total (14)</b></td><td></td><td class="n"><b>${ratTot}</b></td><td></td><td></td><td class="n"><b>${fmt(ptsTot)}</b></td><td class="mut" style="font-size:12px">${opts.keep?`+ ${fmt(opts.keep)} kept for KNPL-8/9`:""}</td></tr>
+     <tr><td></td><td><b>Total (14)</b></td><td></td><td class="n"><b>${ratTot}</b></td><td></td><td class="n"><b>${fmt(ptsTot)}</b><div class="mut" style="font-size:11px">expected</div></td><td></td><td></td><td class="mut" style="font-size:12px">${opts.keep?`+ ${fmt(opts.keep)} kept for KNPL-8/9`:""}</td></tr>
    </table></div>
    <div class="row" style="margin-top:10px"><button class="btn sm" id="bsStar">Set these as ★★★ targets with "Your max" as walk-away</button></div>
    <div class="explain" style="margin-top:6px">Back-ups by fit: ${r.alts.slice(0,10).map(x=>`${esc(x.p.name)} (${x.cat}, ${x.rating})`).join(" · ")}</div>
-   <div class="note"><b>How to read it.</b> Owner and draft rows use fixed Draft Points (base point + base point × Skill Rating ÷ 100, rounded up) and are not bid for. <b>Your max</b> is the most to bid for each pick; if you stay within every max, all 14 together stay inside 1,00,000 points, the ${r.cap} Skill Rating cap and the Round 1 category limits (max 6 Conqueror + Dominator, so at least 8 Rising Stars). <b>Teams that want him</b> lists rivals who rate highly for the player (played for them, played with their owner/drafts, district, stats) and an estimate of how far each may go, capped by their own points reserve; ⚠ means a rival may go past your max — line up the back-up. Other teams' probable drafts (max 3 incl. owner, highest categories kept) are excluded. Ratings, categories and drafts are provisional until NPL-5 and the 28 Nov draft.</div>`;
+   <div class="note"><b>How to read it.</b> Owner and draft rows use fixed Draft Points (base point + base point × Skill Rating ÷ 100, rounded up) and are not bid for. <b>How the numbers are made:</b> the auction is simulated 1,000 times. In each run every rival values every player from its interest (played for them, with their owner/drafts, district, stats) with the price spread seen in real KNPL auctions, limited by its own points reserve, rating cap and category limits; you pay the top rival bid + one step (never below base). <b>Your max</b> is the bid that beats every rival in 90% of the simulated auctions, but never more than your budget allows (the highest bid that still lets you buy all the other picks within 1,00,000 in at least 80% of simulations, shown as "budget allows") and never below his base point. Going above it rarely changes the result — it only costs points you can carry to KNPL-8/9. <b>Win chance</b> = how often that max wins him. All 14 also stay within the ${r.cap} cap and Round 1 limits (max 6 Conqueror + Dominator). ⚠ = a rival may go past your max — line up the back-up. Other teams' probable drafts (max 3 incl. owner, highest categories kept) are excluded. Ratings, categories and drafts are provisional until NPL-5 and the 28 Nov draft.</div>`;
   $('bsStar').onclick=()=>{ r.sel.forEach(x=>{ x.p.star=3; x.p.myVal=x.max; }); persist(); renderPool(); renderDash(); toast(`${r.sel.length} targets set with walk-away prices`); };
 }
 
-$('bsGo').onclick=renderBestSquad;
+$('bsGo').onclick=()=>renderBestSquad();
 /* ================= AUCTION MODE UI + GITHUB MODE ================= */
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use==="function");
 function renderLiveStatus(){ setTimeout(()=>{ const rc=$('roundChip'); if(rc) rc.onclick=()=>{ S.cfg.round = S.cfg.round===2?1:2; persist(); renderLive(); }; },0);
@@ -1480,8 +1533,8 @@ async function importDraftFile(file){
 const QUICK = [
   ["Should I bid on the player on the block?", ()=>{ if(!liveP) return "Pick the player on the block in 🏏 Auction Mode first.";
      const p=liveP, f=mmFit(p), m=marketEst(p), t=teamState(MY), riv=TEAMS.filter(x=>x!==MY).map(x=>rivalInterest(x,p)).filter(r=>r.ok).sort((a,b)=>b.score-a.score);
-     const ceil=Math.min(t.maxBid, roundBidDown(m.est*(0.7+f.score/100*0.8)));
-     return `**${p.name}** — fit ${f.score}/100, market ≈ ${fmt(m.est)}.\n- Your ceiling: **${fmt(ceil)}** (max bid now ${fmt(t.maxBid)}).\n- Strongest rivals: ${riv.slice(0,3).map(r=>`${r.team} (${r.score})`).join(", ")||"none"}.\n- Why: ${f.why.join("; ")}.`; }],
+     const pl=LAST_PLAN&&LAST_PLAN.sel.find(x=>x.p.id===p.id); const sp=simPay(p); const ceil=Math.max(BASE_PT[p.cat]||0, Math.min(t.maxBid, pl?pl.max:roundBidDown(m.est*(0.7+f.score/100*0.8))));
+     return `**${p.name}** — fit ${f.score}/100, expected price ${fmt(sp.p50)} (likely ${fmt(sp.p25)}–${fmt(sp.p80)}).\n- Your max: **${fmt(ceil)}**${pl?' (from your squad plan)':''} — wins in ${Math.round(sp.pay.filter(v=>v<=ceil).length/SIM_N*100)}% of simulations (max bid allowed now ${fmt(t.maxBid)}).\n- Strongest rivals: ${riv.slice(0,3).map(r=>`${r.team} (${r.score})`).join(", ")||"none"}.\n- Why: ${f.why.join("; ")}.`; }],
   ["What does my squad still need?", ()=>{ const t=teamState(MY), c=mmComposition(), V=S.cfg.vision||VISION_DEFAULT;
      return `**${t.slots} slots** left, **${fmt(t.purseLeft)}** purse, rating room **${fmt(t.cap-t.rating)}**.\n- Keeper ${c.wk}/${V.wk} · All-rounders ${c.ar}/6–7 · Bowlers ${c.bowl}/${V.bowl} · Hitters ${c.hit}/${V.hit} · Anchor ${c.anchor}/${V.anchor} · New faces ${c.newf}/${V.newf}\n- Rising Stars ${t.g.R}/${S.cfg.rsNeed}`; }],
   ["Who can outbid us right now?", ()=>{ const me=teamState(MY).maxBid; const r=TEAMS.filter(x=>x!==MY).map(x=>({x,t:teamState(x)})).sort((a,b)=>b.t.maxBid-a.t.maxBid);

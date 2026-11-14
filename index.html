@@ -1377,7 +1377,7 @@ function renderQuick(){
 
 { const _rl2=renderLive; renderLive=function(){ _rl2(); renderLiveStatus(); }; const _rd=renderDash; renderDash=function(){ _rd(); renderHero(); }; }
 /* ================= LOGIN (GitHub version) ================= */
-const DATA_URL = "";   // Apps Script web-app URL (set after deployment; can also be entered on the login screen)
+const DATA_URL = "https://script.google.com/macros/s/AKfycbwoPoxk_Dj38j_Vfky4xxNO5hCF-UMXnvTDFwy-1plSMYRzTpKA4lAvdmADPSBzzJrkHA/exec";   // Apps Script web-app URL (set after deployment; can also be entered on the login screen)
 function apiUrl(){ let u=DATA_URL; try{ u = u || JSON.parse(localStorage.getItem('mmwr-api')||"{}").url || ""; }catch(e){} return u; }
 function isLoggedIn(){ try{ return localStorage.getItem('mmwr-session')==="1"; }catch(e){ return false; } }
 function showLogin(reason){

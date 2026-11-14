@@ -131,6 +131,7 @@ body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{displ
 <nav id="tabs">
   <button data-v="dash" class="on">📊 Dashboard</button>
   <button data-v="live" class="auctab">🏏 Auction Mode</button>
+  <button data-v="tb">🧩 Team Builder</button>
   <button data-v="pool">👥 Players</button>
   <button data-v="squad">🦏 My Squad</button>
   <button data-v="teams">⚔️ Rivals</button>
@@ -210,6 +211,19 @@ body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{displ
         <span class="mut" id="syncMsg"></span>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- TEAM BUILDER -->
+<section class="view" id="v-tb">
+  <div class="card">
+    <h3>Search a player · market value</h3>
+    <div class="row"><input id="tbSearch" list="poolList" placeholder="Type a name or Reg ID…" style="flex:1;min-width:240px;font-size:16px;padding:11px 12px"><button class="btn" id="tbGo">Show</button></div>
+    <div id="tbCard" style="margin-top:12px"></div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <h3>My team plan (14)</h3>
+    <div id="tbPlan"></div>
   </div>
 </section>
 
@@ -506,7 +520,7 @@ function load(){
   try{ loc = JSON.parse(localStorage.getItem('mm-knpl7-war-room')); }catch(e){}
   let pick = (loc && (!emb || (loc.savedAt||0) >= (emb.savedAt||0))) ? loc : emb;
   const s = JSON.parse(JSON.stringify(DEFAULT));
-  if(pick){ Object.assign(s.cfg, pick.cfg||{}); s.players = pick.players||{}; s.savedAt = pick.savedAt||0; s.syncedAt = pick.syncedAt||0; s.draftList = pick.draftList||null; s.draftProbable = pick.draftProbable||null; s.draftFinal = pick.draftFinal||null; s.poolIds = pick.poolIds||null; }
+  if(pick){ Object.assign(s.cfg, pick.cfg||{}); s.players = pick.players||{}; s.savedAt = pick.savedAt||0; s.syncedAt = pick.syncedAt||0; s.draftList = pick.draftList||null; s.draftProbable = pick.draftProbable||null; s.draftFinal = pick.draftFinal||null; s.poolIds = pick.poolIds||null; s.myPlan = pick.myPlan||[]; }
   return s;
 }
 function persist(){ S.savedAt = Date.now(); try{ localStorage.setItem('mm-knpl7-war-room', JSON.stringify(S,(k,v)=>k==="_prof"?undefined:v)); }catch(e){} }
@@ -1364,7 +1378,8 @@ function optimiseSquad(opts){
     return {v: feasible? v : -1e9, cost, rat, c, feasible};
   }
   if(slots<=0) return {sel:[],core,msg:"Squad already full.",coreCost};
-  let sel=[]; const used=new Set();
+  const lockedIds=new Set((opts.locked||[]).map(p=>p.id));
+  let sel=C.filter(x=>lockedIds.has(x.p.id)); const used=new Set(sel);
   const order=[...C].sort((a,b)=>(b.val+(b.wk?30:0)+(b.bowl?15:0))-(a.val+(a.wk?30:0)+(a.bowl?15:0)));
   for(const x of order){ if(sel.length>=slots) break; const trial=[...sel,x]; if(!limitsOK(trial)) continue; const s=score(trial);
     const remain=slots-trial.length; const rest=C.filter(y=>!used.has(y)&&y!==x); const cheapest=Math.min(...rest.map(y=>y.cost),2000); const lowR=Math.min(...rest.map(y=>y.rating),minRating());
@@ -1372,7 +1387,7 @@ function optimiseSquad(opts){
   for(const x of [...C].sort((a,b)=>a.cost-b.cost)){ if(sel.length>=slots) break; if(used.has(x)) continue; const s=score([...sel,x]); if(s.feasible){ sel.push(x); used.add(x);} }
   let best=score(sel), improved=true, iter=0;
   while(improved && iter<60){ improved=false; iter++;
-    for(let i=0;i<sel.length;i++){ for(const y of C){ if(used.has(y)) continue; const trial=sel.slice(); trial[i]=y; const s=score(trial);
+    for(let i=0;i<sel.length;i++){ if(lockedIds.has(sel[i].p.id)) continue; for(const y of C){ if(used.has(y)) continue; const trial=sel.slice(); trial[i]=y; const s=score(trial);
       if(s.v>best.v+0.01){ used.delete(sel[i]); used.add(y); sel=trial; best=s; improved=true; } } }
     if(sel.length<slots){ for(const y of C){ if(used.has(y)) continue; const s=score([...sel,y]); if(s.v>best.v+0.01){ sel=[...sel,y]; used.add(y); best=s; improved=true; break; } } } }
   // Repair: if a place is still empty, swap one pick for a cheaper/lower-rated one so the 14th fits
@@ -1383,15 +1398,15 @@ function optimiseSquad(opts){
     for(const y of free){ const s=score([...sel,y]); if(s.feasible && s.v>bestV){ bestV=s.v; bestTrial=[...sel,y]; } }
     if(!bestTrial){
       const cheap=free.slice().sort((a,b)=>(a.rating-b.rating)||(a.cost-b.cost)).slice(0,40);
-      for(let i=0;i<sel.length;i++) for(const y of cheap) for(const z of cheap){ if(y===z) continue;
-        const trial=sel.slice(); trial[i]=y; trial.push(z); const s=score(trial); if(s.feasible && s.v>bestV){ bestV=s.v; bestTrial=trial; } }
+      for(let i=0;i<sel.length;i++){ if(lockedIds.has(sel[i].p.id)) continue; for(const y of cheap) for(const z of cheap){ if(y===z) continue;
+        const trial=sel.slice(); trial[i]=y; trial.push(z); const s=score(trial); if(s.feasible && s.v>bestV){ bestV=s.v; bestTrial=trial; } } }
     }
     if(!bestTrial) break;
     sel=bestTrial; used.clear(); sel.forEach(x=>used.add(x)); best=score(sel);
   }
   const simRes=simulatePlan(sel, purseLeft, 0.8);
   const total=sel.reduce((a,x)=>a+x.p50,0);
-  LAST_PLAN={sel,at:Date.now()};
+  if(!opts.locked) LAST_PLAN={sel,at:Date.now()};
   return {sel, core, coreCost, best, purseLeft, ratingLeft, cap, slots, totalMax:total, okAll:simRes.okAll, alts:C.filter(x=>!used.has(x)).sort((a,b)=>b.val-a.val)};
 }
 function renderBestSquadRun(opts){ opts._go=true; renderBestSquad(opts); }
@@ -1443,6 +1458,122 @@ function renderBestSquad(passed){
 }
 
 $('bsGo').onclick=()=>renderBestSquad();
+/* ================= TEAM BUILDER ================= */
+let TB_OPEN=null;
+function tbPlan(){ return (S.myPlan||[]).map(id=>S.players[id]).filter(p=>p && isAvail(p)); }
+function tbItems(list){ return list.map(p=>{ const sp=simPay(p); return {p, base:BASE_PT[p.cat]||2000, est:sp.est, cost:sp.p75, rating:p.rating, cat:p.cat, g:GROUP(p.cat)}; }); }
+function tbCounts(players){ const k={C:0,D:0,R:0,CV:0,CC:0,DA:0,DC:0,RSE:0,RSC:0}; players.forEach(p=>{k[GROUP(p.cat)]++; if(k[p.cat]!=null)k[p.cat]++;}); return k; }
+function tbLimitsOK(k){ return k.C<=R1.C && k.D<=R1.D && k.DA<=R1.DA && k.R<=R1.R && k.RSE<=R1.RSE && k.RSC<=R1.RSC && k.C+k.D<=R1.CD; }
+function marketCard(p){
+  if(!INTEL.pct.rpm) buildIntel();
+  const pr=profile(p), sp=simPay(p), f=p.stats?mmFit(p):{score:0,why:[]}, s=p.stats, base=BASE_PT[p.cat]||2000;
+  const st=s?`${s.m} matches · ${s.runs} runs @ ${s.avg||"–"} (HS ${s.hs}) · 6s ${s.s6} · ${s.wk} wkts in ${s.ov.toFixed(1)} ov · ${s.ct} catches · MVP ${(pr.d.mvpPM).toFixed(2)}/match`:"No stats";
+  const status = p.team?`Sold to ${p.team} for ${fmt(p.price)}`: p.isOwner?`Owner of ${p.ownerOf}`: p.draftTeam?`Probable draft: ${p.draftTeam}`: p.inPool===false?"Not in final pool":"Available";
+  const inPlan=(S.myPlan||[]).includes(p.id);
+  return `<div class="card" style="border-color:var(--gold)">
+    <div class="row" style="align-items:flex-start;gap:18px">
+      <div style="flex:1;min-width:240px"><div class="mut">${esc(p.id)} · ${esc(p.district||"")}</div><div style="font-size:22px;font-weight:800">${esc(p.name)}</div>
+        <div>${tag(p.cat)} <span class="mut">${CATS[p.cat]||""} · SR ${p.rating||"–"}</span></div><div style="margin-top:6px">${roleTags(pr)}</div>
+        <div class="mut" style="font-size:12px;margin-top:6px">${st}</div><div class="mut" style="font-size:12px">${esc(k6Label(p.name))}</div></div>
+      <div class="grid" style="grid-template-columns:repeat(2,minmax(130px,1fr));gap:8px;min-width:280px">
+        <div class="catbox"><div class="mut" style="font-size:12px">Market value</div><div class="v">${fmt(sp.p50)}</div><div class="mut" style="font-size:11px">likely ${fmt(sp.p25)}–${fmt(sp.p80)}</div></div>
+        <div class="catbox"><div class="mut" style="font-size:12px">Base point</div><div class="v">${fmt(base)}</div><div class="mut" style="font-size:11px">90% safe bid ${fmt(sp.p90)}</div></div>
+        <div class="catbox"><div class="mut" style="font-size:12px">Fit for Mavericks</div><div class="v" style="color:${f.score>=60?'var(--green)':f.score>=40?'var(--amber)':'var(--red)'}">${f.score}</div></div>
+        <div class="catbox"><div class="mut" style="font-size:12px">Status</div><div style="font-weight:700;margin-top:8px">${esc(status)}</div></div>
+      </div>
+    </div>
+    <div class="note">Rivals most likely to bid: ${sp.topRivals.length? sp.topRivals.map(r=>`<b>${esc(r.team)}</b> (top bidder in ${r.share}% of simulations, may go to ~${fmt(r.likelyMax)})`).join(" · ") : "none expected above base"}. Why this fit: ${esc(f.why.join(" · "))}.</div>
+    <div class="row" style="margin-top:10px">${isAvail(p)? (inPlan?'<span class="ok">✓ In your plan</span>':`<button class="btn" data-tbadd="${esc(p.id)}">+ Add to my team plan</button>`) : '<span class="mut">Not available to bid</span>'}
+      <button class="btn sec" data-tbalt="${esc(p.id)}">Show 5 alternatives</button></div>
+    <div id="tbAlt_${esc(p.id)}"></div>
+  </div>`;
+}
+/* Top equivalent players: similar role & profile, same/near category, similar rating — and still legal if swapped into the plan */
+function alternatives(p, n=5){
+  const prA=profile(p), plan=tbPlan(), core=teamCore(MY);
+  const others=plan.filter(q=>q.id!==p.id), cap=S.cfg.cap+(S.cfg.useBonus?S.cfg.bonus:0);
+  const baseRat=[...core,...others].reduce((a,q)=>a+(q.rating||0),0);
+  const cands=P().filter(c=>c.id!==p.id && isAvail(c) && c.stats && c.rating>0 && !plan.some(q=>q.id===c.id) && BASE_PT[c.cat]);
+  const out=[];
+  cands.forEach(c=>{
+    const b=profile(c);
+    let d=Math.hypot(prA.bat-b.bat, prA.bowl-b.bowl, prA.perf-b.perf, (prA.field-b.field)*0.6)/100;
+    if(prA.role!==b.role) d+=0.25; if(prA.keeper!==b.keeper) d+=prA.keeper?0.5:0.1; if(prA.hitter!==b.hitter) d+=0.12; if(prA.anchor!==b.anchor) d+=0.1;
+    d += c.cat===p.cat?0 : GROUP(c.cat)===GROUP(p.cat)?0.12 : 0.4;
+    d += Math.abs((c.rating||0)-(p.rating||0))/100*0.6;
+    const k=tbCounts([...core,...others,c]); const legal = tbLimitsOK(k) && baseRat+c.rating<=cap;
+    out.push({c,d,legal});
+  });
+  return out.filter(x=>x.legal).sort((a,b)=>a.d-b.d).slice(0,n).map(x=>{ const sp=simPay(x.c); return {p:x.c, sim:Math.max(0,Math.round(100-x.d*100)), p50:sp.p50, p25:sp.p25, p80:sp.p80, fit:mmFit(x.c).score}; });
+}
+function altHTML(p, swapId){
+  const alts=alternatives(p);
+  if(!alts.length) return '<div class="mut" style="margin-top:8px">No legal alternative found in the available pool.</div>';
+  return `<div style="margin-top:10px"><b class="cond" style="color:var(--gold2);font-size:16px">TOP 5 ALTERNATIVES TO ${esc(p.name.toUpperCase())}</b>
+   <table><tr><th>Player</th><th>Cat</th><th class="n">SR</th><th>Role</th><th class="n">Match</th><th class="n">Fit</th><th class="n">Market value</th><th></th></tr>
+   ${alts.map(a=>{const pr=profile(a.p); return `<tr><td><b>${esc(a.p.name)}</b><div class="mut" style="font-size:11px">${esc(a.p.district||"")}</div></td><td>${tag(a.p.cat)}</td><td class="n">${a.p.rating}</td>
+     <td style="font-size:12px">${pr.role}${pr.keeper?" · 🧤":""}${pr.hitter?" · 💥":""}${pr.anchor?" · ⚓":""}${pr.newFace?" · 🆕":""}</td><td class="n">${a.sim}%</td><td class="n">${a.fit}</td>
+     <td class="n"><b>${fmt(a.p50)}</b><div class="mut" style="font-size:11px">${fmt(a.p25)}–${fmt(a.p80)}</div></td>
+     <td>${swapId?`<button class="btn sm" data-tbswap="${esc(swapId)}|${esc(a.p.id)}">Swap in</button>`:(isAvail(a.p)&&!(S.myPlan||[]).includes(a.p.id)?`<button class="btn sm sec" data-tbadd="${esc(a.p.id)}">+ Add</button>`:"")}</td></tr>`;}).join("")}</table>
+   <div class="explain">Match = how close his batting, bowling, MVP and fielding profile, role, category and rating are. Only players who keep your plan within the Skill Rating cap and Round 1 limits are shown.</div></div>`;
+}
+function renderTeamBuilder(){
+  const box=$('tbPlan'); if(!box) return;
+  if(!P().some(p=>p.stats)){ box.innerHTML='<div class="mut">Load player data first (⚙️ Setup &amp; Data).</div>'; return; }
+  if(!INTEL.pct.rpm) buildIntel();
+  const core=teamCore(MY), plan=tbPlan(), items=tbItems(plan);
+  const coreCost=q=>q.team?(q.price||0):draftPoint(q);
+  const purseLeft=S.cfg.purse-core.reduce((a,q)=>a+coreCost(q),0), cap=S.cfg.cap+(S.cfg.useBonus?S.cfg.bonus:0);
+  const sim=items.length? simulatePlan(items, purseLeft, 0.8) : {okAll:100};
+  const all=[...core,...plan], k=tbCounts(all), rat=all.reduce((a,q)=>a+(q.rating||0),0);
+  const exp=core.reduce((a,q)=>a+coreCost(q),0)+items.reduce((a,x)=>a+x.p50,0);
+  const slots=S.cfg.squad-all.length;
+  const chk=(l,ok)=>`<span class="pill" style="border-color:${ok?'var(--green)':'var(--red)'}">${ok?"✓":"✗"} ${l}</span>`;
+  box.innerHTML=`<div class="row" style="margin-bottom:8px">
+      ${chk(`${all.length} / 14 players`, all.length===S.cfg.squad)} ${chk(`Expected spend ${fmt(exp)} / ${fmt(S.cfg.purse)}`, exp<=S.cfg.purse)}
+      ${chk(`Completes in ${sim.okAll}% of simulations`, sim.okAll>=70)} ${chk(`Skill Rating ${rat} / ${cap}`, rat<=cap)}
+      ${chk(`Conqueror ${k.C}/1`, k.C<=1)} ${chk(`Dominator ${k.D}/3 (Apex ${k.DA}/1)`, k.D<=3&&k.DA<=1)} ${chk(`Rising Stars ${k.R} (Elite ${k.RSE}/7 · Core ${k.RSC}/4)`, k.RSE<=7&&k.RSC<=4&&k.C+k.D<=6)}
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn" id="tbFill" ${slots>0?"":"disabled"}>✨ Auto-fill ${slots} remaining place${slots===1?"":"s"} with best options</button>
+      <button class="btn sec" id="tbFromGen">Copy generated squad</button>
+      <button class="btn sec" id="tbStar">Set as ★★★ targets</button>
+      <button class="btn red" id="tbClear">Clear my picks</button>
+    </div>
+    <div style="overflow-x:auto"><table>
+      <tr><th>#</th><th>Player</th><th>Cat</th><th class="n">SR</th><th class="n">Market value<div style="font-weight:400;text-transform:none">likely range</div></th><th class="n">Your max</th><th class="n">Win</th><th></th></tr>
+      ${core.map((q,i)=>`<tr class="mine"><td class="mut">${i+1}</td><td><b>${esc(q.name)}</b> <span class="tag t-NA">${q.ownerOf?"OWNER":q.team?"BOUGHT":"DRAFT"}</span></td><td>${tag(q.cat)}</td><td class="n">${q.rating}</td><td class="n mut">fixed</td><td class="n"><b>${fmt(coreCost(q))}</b></td><td></td><td></td></tr>`).join("")}
+      ${items.map((x,i)=>{const pr=profile(x.p); return `<tr><td class="mut">${core.length+i+1}</td><td><b>${esc(x.p.name)}</b><div class="mut" style="font-size:11px">${esc(x.p.district||"")} · ${pr.role}${pr.keeper?" · 🧤":""}${pr.hitter?" · 💥":""}${pr.anchor?" · ⚓":""}${pr.newFace?" · 🆕":""}</div></td><td>${tag(x.p.cat)}</td><td class="n">${x.p.rating}</td>
+        <td class="n">${fmt(x.p50)}<div class="mut" style="font-size:11px">${fmt(x.p25)}–${fmt(x.p80)}</div></td><td class="n"><b style="color:var(--gold2)">${fmt(x.max)}</b></td><td class="n"><b class="${x.win>=70?"ok":x.win>=40?"warn":"bad"}">${x.win}%</b></td>
+        <td style="white-space:nowrap"><button class="btn sm sec" data-tbalt2="${esc(x.p.id)}">Alternatives</button> <button class="btn sm red" data-tbrm="${esc(x.p.id)}">✕</button></td></tr>
+        ${TB_OPEN===x.p.id?`<tr><td></td><td colspan="7">${altHTML(x.p, x.p.id)}</td></tr>`:""}`;}).join("")}
+      ${Array.from({length:Math.max(0,slots)},(_,i)=>`<tr><td class="mut">${all.length+i+1}</td><td colspan="7" class="mut">— empty place — search above or auto-fill</td></tr>`).join("")}
+    </table></div>
+    <div class="note">Market value and Your max come from the same 1,000-run auction simulation as the generated squad (rivals' interest, past prices, their points reserve, cap and category limits). Your max keeps the rest of this plan affordable in at least 80% of simulations and never goes below base.</div>`;
+}
+function tbSearch(){
+  const v=$('tbSearch').value.trim(); const box=$('tbCard'); if(!v){ box.innerHTML=""; return; }
+  const p=findPlayer(v); box.innerHTML = p? marketCard(p) : '<div class="mut">No player found.</div>';
+}
+function tbAutoFill(){
+  const plan=tbPlan(); const opts={priceMode:"est", keep:0, zoneOnly:false, locked:plan};
+  const r=optimiseSquad(opts); if(!r.sel) return;
+  S.myPlan=r.sel.map(x=>x.p.id); persist(); renderTeamBuilder(); toast("Plan filled — your picks were kept");
+}
+document.addEventListener('click',e=>{
+  const a=e.target.closest('[data-tbadd]'); if(a){ const id=a.dataset.tbadd; const plan=S.myPlan||(S.myPlan=[]); if(!plan.includes(id)){ if(teamCore(MY).length+tbPlan().length>=S.cfg.squad){ toast("Plan already has 14 — remove someone first"); return; } plan.push(id); persist(); } renderTeamBuilder(); tbSearch(); toast("Added to your plan"); return; }
+  const rm=e.target.closest('[data-tbrm]'); if(rm){ S.myPlan=(S.myPlan||[]).filter(x=>x!==rm.dataset.tbrm); persist(); renderTeamBuilder(); return; }
+  const al=e.target.closest('[data-tbalt]'); if(al){ const p=S.players[al.dataset.tbalt]; const box=$('tbAlt_'+p.id); if(box) box.innerHTML = box.innerHTML? "" : altHTML(p, (S.myPlan||[]).includes(p.id)?p.id:null); return; }
+  const al2=e.target.closest('[data-tbalt2]'); if(al2){ TB_OPEN = TB_OPEN===al2.dataset.tbalt2? null : al2.dataset.tbalt2; renderTeamBuilder(); return; }
+  const sw=e.target.closest('[data-tbswap]'); if(sw){ const [from,to]=sw.dataset.tbswap.split("|"); S.myPlan=(S.myPlan||[]).map(x=>x===from?to:x); TB_OPEN=null; persist(); renderTeamBuilder(); toast("Swapped"); return; }
+  if(e.target.id==='tbFill') tbAutoFill();
+  if(e.target.id==='tbClear'){ S.myPlan=[]; persist(); renderTeamBuilder(); }
+  if(e.target.id==='tbFromGen'){ if(!LAST_PLAN){ toast("Generate a squad on the Dashboard first"); return; } S.myPlan=LAST_PLAN.sel.map(x=>x.p.id); persist(); renderTeamBuilder(); }
+  if(e.target.id==='tbStar'){ const core=teamCore(MY); const items=tbItems(tbPlan()); const pl=S.cfg.purse-core.reduce((a,q)=>a+(q.team?(q.price||0):draftPoint(q)),0); if(items.length){ simulatePlan(items,pl,0.8); items.forEach(x=>{ x.p.star=3; x.p.myVal=x.max; }); persist(); renderPool(); toast(`${items.length} targets set with walk-away prices`); } }
+});
+
+$('tbGo').onclick=tbSearch; $('tbSearch').addEventListener('change',tbSearch); $('tbSearch').addEventListener('keydown',e=>{ if(e.key==='Enter') tbSearch(); });
+document.querySelector('nav button[data-v=tb]').addEventListener('click',()=>{ $('tbPlan').innerHTML='<div class="mut">🎲 Simulating…</div>'; setTimeout(renderTeamBuilder,20); });
 /* ================= AUCTION MODE UI + GITHUB MODE ================= */
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use==="function");
 function renderLiveStatus(){ setTimeout(()=>{ const rc=$('roundChip'); if(rc) rc.onclick=()=>{ S.cfg.round = S.cfg.round===2?1:2; persist(); renderLive(); }; },0);

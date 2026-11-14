@@ -1370,15 +1370,24 @@ function optimiseSquad(opts){
     const k={...cc}; sel.forEach(x=>{ k[x.g]++; k[x.cat]++; });
     return k.C<=R1.C && k.D<=R1.D && k.DA<=R1.DA && k.R<=R1.R && k.RSE<=R1.RSE && k.RSC<=R1.RSC && k.C+k.D<=R1.CD;
   }
-  const sortR=C.map(x=>x.rating).sort((a,b)=>a-b), sortC=C.map(x=>x.cost).sort((a,b)=>a-b);
-  const resR=n=>sortR.slice(0,n).reduce((a,b)=>a+b,0), resC=n=>sortC.slice(0,n).reduce((a,b)=>a+b,0);
+  // Reserve for the empty places: cheapest way to fill them that still respects the round's category limits
+  const R2_COST=minBase(), R2_RAT=minRating();
+  const byCost=[...C].sort((a,b)=>a.cost-b.cost), byRat=[...C].sort((a,b)=>a.rating-b.rating);
+  function reserve(sel, n, list, key){
+    if(n<=0) return 0; const inSel=new Set(sel); const k={...cc}; sel.forEach(x=>{ k[x.g]++; k[x.cat]++; });
+    let tot=0, got=0;
+    for(const y of list){ if(inSel.has(y)) continue; k[y.g]++; k[y.cat]++;
+      if(k.C<=R1.C && k.D<=R1.D && k.DA<=R1.DA && k.R<=R1.R && k.RSE<=R1.RSE && k.RSC<=R1.RSC && k.C+k.D<=R1.CD){ tot+=y[key]; if(++got>=n) return tot; }
+      else { k[y.g]--; k[y.cat]--; } }
+    // places that can't be bought within round-1 limits are planned for round 2 (unsold players, no limits) at the rule's reserve
+    return tot + (n-got)*(key==="cost"? R2_COST : R2_RAT); }
   function score(sel){
     let v=0, cost=0, rat=0; const c={...coreCnt};
     sel.forEach(x=>{ v+=x.val; cost+=x.cost; rat+=x.rating; ["wk","ar","bowl","hit","anchor","newf"].forEach(k=>{ if(x[k]) c[k]++; }); });
     for(const k in W){ const need=V[k]; v -= Math.max(0,need-c[k])*W[k]; }
     v -= Math.max(0,slots-sel.length)*400;
     const rem=Math.max(0,slots-sel.length);
-    const feasible = cost+resC(rem)<=purseLeft && rat+resR(rem)<=ratingLeft && sel.length<=slots && limitsOK(sel);
+    const feasible = sel.length<=slots && limitsOK(sel) && cost+reserve(sel,rem,byCost,'cost')<=purseLeft && rat+reserve(sel,rem,byRat,'rating')<=ratingLeft;
     return {v: feasible? v : -1e9, cost, rat, c, feasible};
   }
   if(slots<=0) return {sel:[],core,msg:"Squad already full.",coreCost};
@@ -1408,10 +1417,11 @@ function optimiseSquad(opts){
     if(!bestTrial) break;
     sel=bestTrial; used.clear(); sel.forEach(x=>used.add(x)); best=score(sel);
   }
-  const simRes=simulatePlan(sel, purseLeft, 0.8);
+  const r2=Math.max(0,slots-sel.length);
+  const simRes=simulatePlan(sel, purseLeft - r2*R2_COST, 0.8);
   const total=sel.reduce((a,x)=>a+x.p50,0);
   if(!opts.locked) LAST_PLAN={sel,at:Date.now()};
-  return {sel, core, coreCost, best, purseLeft, ratingLeft, cap, slots, totalMax:total, okAll:simRes.okAll, alts:C.filter(x=>!used.has(x)).sort((a,b)=>b.val-a.val)};
+  return {sel, core, coreCost, best, purseLeft, ratingLeft, cap, slots, r2, r2Cost:R2_COST, r2Rat:R2_RAT, totalMax:total, okAll:simRes.okAll, alts:C.filter(x=>!used.has(x)).sort((a,b)=>b.val-a.val)};
 }
 function renderBestSquadRun(opts){ opts._go=true; renderBestSquad(opts); }
 function renderBestSquad(passed){
@@ -1425,7 +1435,8 @@ function renderBestSquad(passed){
   const V=S.cfg.vision||VISION_DEFAULT, c=r.best.c;
   const all=[...r.core.map(q=>({p:q,frozen:true,pts:r.coreCost(q)})), ...[...r.sel].sort((a,b)=>CAT_RANK[b.cat]-CAT_RANK[a.cat]||b.max-a.max).map(x=>({p:x.p,x}))];
   const k={C:0,D:0,R:0,CV:0,CC:0,DA:0,DC:0,RSE:0,RSC:0}; all.forEach(o=>{k[GROUP(o.p.cat)]++; if(k[o.p.cat]!=null)k[o.p.cat]++;});
-  const ratTot=all.reduce((a,o)=>a+(o.p.rating||0),0), ptsTot=all.reduce((a,o)=>a+(o.frozen?o.pts:o.x.p50),0);
+  const r2=r.r2||0, nTot=all.length+r2;
+  const ratTot=all.reduce((a,o)=>a+(o.p.rating||0),0)+r2*r.r2Rat, ptsTot=all.reduce((a,o)=>a+(o.frozen?o.pts:o.x.p50),0)+r2*r.r2Cost;
   const chk=(l,ok)=>`<span class="pill" style="border-color:${ok?'var(--green)':'var(--red)'}">${ok?"✓":"✗"} ${l}</span>`;
   const rows=all.map((o,i)=>{ const p=o.p, pr=profile(p);
     const who=o.frozen?`<span class="tag t-NA">${p.ownerOf?"OWNER":p.team?"BOUGHT":"DRAFT"}</span>`:"";
@@ -1436,16 +1447,18 @@ function renderBestSquad(passed){
       <td class="n">${o.frozen?"":fmt(o.x.p50)+'<div class="mut" style="font-size:11px">'+fmt(o.x.p25)+'–'+fmt(o.x.p80)+'</div>'}</td>
       <td class="n"><b style="color:var(--gold2);font-size:15px">${o.frozen?fmt(o.pts):fmt(o.x.max)}</b>${o.frozen||o.x.headroom<=o.x.max?"":`<div class="mut" style="font-size:11px">budget allows ${fmt(o.x.headroom)}</div>`}</td>
       <td class="n">${o.frozen?"":`<b class="${o.x.win>=70?"ok":o.x.win>=40?"warn":"bad"}">${o.x.win}%</b>`}</td>
-      <td style="font-size:12px">${comp}</td></tr>`; }).join("");
+      <td style="font-size:12px">${comp}</td></tr>`; }).join("")
+   + Array.from({length:r2},(_,j)=>`<tr><td class="mut">${all.length+j+1}</td><td><b>Round-2 pick</b> <span class="tag t-NA">ROUND 2</span><div class="mut" style="font-size:11px">An unsold player, bought in round 2 one category lower with no category limits</div></td><td>–</td><td class="n mut">~${r.r2Rat}</td><td class="n">${fmt(r.r2Cost)}</td><td class="n">${fmt(r.r2Cost)}<div class="mut" style="font-size:11px">reserve</div></td><td class="n"><b style="color:var(--gold2);font-size:15px">${fmt(r.r2Cost)}</b></td><td></td><td class="mut" style="font-size:12px">Pick the best unsold fit when round 2 starts</td></tr>`).join("");
   box.innerHTML = `
    <div class="row" style="margin-bottom:8px">
-     ${chk(`14 players (${all.length})`, all.length===S.cfg.squad)}
+     ${chk(r2?`${S.cfg.squad} players (${all.length} in round 1 + ${r2} in round 2)`:`${S.cfg.squad} players (${all.length})`, nTot===S.cfg.squad)}
      ${chk(`Expected spend ${fmt(ptsTot)} / ${fmt(S.cfg.purse)}`, ptsTot<=S.cfg.purse)}
      ${chk(`Plan completes in ${r.okAll}% of simulations`, r.okAll>=70)}
      ${chk(`Skill Rating ${ratTot} / ${r.cap}`, ratTot<=r.cap)}
      ${chk(`Conqueror ${k.C}/1`, k.C<=1)} ${chk(`Dominator ${k.D}/3 (Apex ${k.DA}/1)`, k.D<=3&&k.DA<=1)}
      ${chk(`Rising Stars ${k.R} (Elite ${k.RSE}/7 · Core ${k.RSC}/4)`, k.R>=8&&k.RSE<=7&&k.RSC<=4)}
    </div>
+   ${r2?`<div class="verdict v-care" style="margin-bottom:8px"><b>${r2} place${r2>1?"s":""} planned for round 2.</b> Round-1 limits mean your remaining places must be Dominators or Rising Stars, and at expected prices the purse can't buy all of them in round 1. Each round-2 place keeps the rule's reserve: ${fmt(r.r2Cost)} points and Skill Rating ~${r.r2Rat}.</div>`:""}
    <div class="row" style="margin-bottom:10px">
      ${chk(`🧤 Keeper ${c.wk}/${V.wk}`, c.wk>=V.wk)} ${chk(`All-rounders ${c.ar}/${V.ar}`, c.ar>=V.ar)} ${chk(`Bowlers ${c.bowl}/${V.bowl}`, c.bowl>=V.bowl)}
      ${chk(`💥 Hitters ${c.hit}/${V.hit}`, c.hit>=V.hit)} ${chk(`⚓ Anchor ${c.anchor}/${V.anchor}`, c.anchor>=V.anchor)} ${chk(`🆕 New faces ${c.newf}/${V.newf}`, c.newf>=V.newf)}
@@ -1453,7 +1466,7 @@ function renderBestSquad(passed){
    <div style="overflow-x:auto"><table>
      <tr><th>#</th><th>Player</th><th>Cat</th><th class="n">SR</th><th class="n">Base pt</th><th class="n">Expected price<div style="font-weight:400;text-transform:none">likely range</div></th><th class="n">Your max</th><th class="n">Win chance</th><th>Rivals likely to bid → how far</th></tr>
      ${rows}
-     <tr><td></td><td><b>Total (14)</b></td><td></td><td class="n"><b>${ratTot}</b></td><td></td><td class="n"><b>${fmt(ptsTot)}</b><div class="mut" style="font-size:11px">expected</div></td><td></td><td></td><td class="mut" style="font-size:12px">${opts.keep?`+ ${fmt(opts.keep)} kept for KNPL-8/9`:""}</td></tr>
+     <tr><td></td><td><b>Total (${nTot})</b></td><td></td><td class="n"><b>${ratTot}</b></td><td></td><td class="n"><b>${fmt(ptsTot)}</b><div class="mut" style="font-size:11px">expected</div></td><td></td><td></td><td class="mut" style="font-size:12px">${opts.keep?`+ ${fmt(opts.keep)} kept for KNPL-8/9`:""}</td></tr>
    </table></div>
    <div class="row" style="margin-top:10px"><button class="btn sm" id="bsStar">Set these as ★★★ targets with "Your max" as walk-away</button></div>
    <div class="explain" style="margin-top:6px">Back-ups by fit: ${r.alts.slice(0,10).map(x=>`${esc(x.p.name)} (${x.cat}, ${x.rating})`).join(" · ")}</div>
@@ -1622,7 +1635,7 @@ function tbSearch(){
 function tbAutoFill(){
   const plan=tbPlan(); const opts={priceMode:"est", keep:0, zoneOnly:false, locked:plan};
   const r=optimiseSquad(opts); if(!r.sel) return;
-  S.myPlan=r.sel.map(x=>x.p.id); persist(); renderTeamBuilder(); toast("Plan filled — your picks were kept");
+  S.myPlan=r.sel.map(x=>x.p.id); persist(); renderTeamBuilder(); toast(r.r2?`Plan filled — ${r.r2} place(s) left for round 2 (unsold players at ~${fmt(r.r2Cost)})`:"Plan filled — your picks were kept");
 }
 document.addEventListener('click',e=>{
   const a=e.target.closest('[data-tbadd]'); if(a){ const id=a.dataset.tbadd; const plan=S.myPlan||(S.myPlan=[]); if(!plan.includes(id)){ if(teamCore(MY).length+tbPlan().length>=S.cfg.squad){ toast("Plan already has 14 — remove someone first"); return; } plan.push(id); persist(); } renderTeamBuilder(); tbSearch(); toast("Added to your plan"); return; }

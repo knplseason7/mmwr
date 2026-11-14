@@ -166,6 +166,7 @@ body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{displ
 
 <!-- LIVE BID -->
 <section class="view" id="v-live">
+  <div id="spaBanner"></div>
   <div class="statusbar" id="liveStatus"></div>
   <div class="livegrid">
    <div>
@@ -343,6 +344,9 @@ body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{displ
 
 <!-- SETUP -->
 <section class="view" id="v-setup">
+  <div class="card" style="margin-bottom:14px;border-color:var(--gold)"><h3>🔴 Live link to Super Player Auction</h3>
+    <div id="liveLinkBox"></div>
+  </div>
   <div class="card" style="margin-bottom:14px;border-color:var(--gold)"><h3>Player data · KNPL-7 registration sheet</h3>
     <p class="mut" style="margin-top:0">Reads Skill Rating, category, district, every league season's team and CricHeroes stats (Player Stats tab) straight from your Google Sheet through your Google Sheets connection. Phone numbers and family details are not read. Re-sync after the NPL-5 update and when the final pool is out.</p>
     <div class="row" id="dataConnect"><button class="btn" id="syncSheetBtn">Sync from Google Sheet</button></div><div id="syncSheetMsg" class="mut" style="margin-top:8px"></div><div id="dataStatus" class="explain" style="font-size:13px;margin-top:6px"></div>
@@ -1458,6 +1462,66 @@ function renderBestSquad(passed){
 }
 
 $('bsGo').onclick=()=>renderBestSquad();
+/* ================= LIVE LINK (Super Player Auction → War Room) ================= */
+const SPA_ORIGIN="https://superplayerauction.com";
+let SPA={on:false, at:0, bidteam:"", bid:0, prevTeams:null, lastPcode:null, lastPlayer:null, seenSold:{}};
+function spaMatchPlayer(info){
+  if(!info) return null;
+  const m=String(info.reg||"").match(/KNPL7-\d{4}/i); if(m && S.players[m[0].toUpperCase()]) return S.players[m[0].toUpperCase()];
+  const n=normName(info.name);
+  const num=String(info.reg||"").match(/Reg\.?\s*No\.?\s*:?\s*(\d{1,4})/i);
+  if(num){ const c=S.players["KNPL7-"+num[1].padStart(4,"0")]; if(c){ const f=normName(c.name).split(" ")[0]; if(!n || (f && n.includes(f))) return c; } }
+  return P().find(p=>normName(p.name)===n) || (n.length>5 && P().find(p=>normName(p.name).includes(n)||n.includes(normName(p.name)))) || null;
+}
+function spaMatchTeam(name){ return TEAMS.find(t=>sameTeam(t,name)) || ""; }
+function spaRecordSale(p, teamName, price, why){
+  const team=spaMatchTeam(teamName); if(!p||!team||!price) return;
+  const k=p.id+"|"+team; if(SPA.seenSold[k]) return; SPA.seenSold[k]=1;
+  if(p.team===team && p.price===price) return;
+  Object.assign(p,{team,price,status:"Sold"}); persist();
+  toast(`${team===MY?"🦏 ":""}${p.name} → ${team} · ${fmt(price)}`);
+}
+function handleSPA(m){
+  SPA.on=true; SPA.at=Date.now();
+  if(m.type==="init"){ let n=0; (m.sold||[]).forEach(s=>{ const p=spaMatchPlayer(s); if(p && !p.team){ spaRecordSale(p,s.team,s.price,"init"); n++; } }); if(n){ renderAll(); } return; }
+  if(m.type!=="live") return;
+  // sale detection: a team's player count went up → the player last on the block went to that team
+  if(SPA.prevTeams && m.teams){
+    Object.entries(m.teams).forEach(([t,v])=>{ const pv=SPA.prevTeams[t]; if(pv && v.n>pv.n){ const price=(pv.rm-v.rm)>0?(pv.rm-v.rm):SPA.bid; spaRecordSale(SPA.lastPlayer, t, price, "live"); } });
+  }
+  if(m.teams) SPA.prevTeams=m.teams;
+  SPA.bid=m.bid||0; SPA.bidteam=m.bidteam||"";
+  const p=spaMatchPlayer(m.player);
+  if(m.player && m.player.pcode!==SPA.lastPcode){ SPA.lastPcode=m.player.pcode; SPA.lastPlayer=p;
+    if(p){ liveP=p; $('liveSearch').value=`${p.id} · ${p.name}`; if(S.cfg.autoLive!==false){ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==='live')); document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-live')); } }
+  }
+  if(SPA.lastPlayer){ $('liveBid').value = SPA.bid || ""; $('soldPrice').value = SPA.bid || ""; if(SPA.bidteam) $('soldTeam').value = spaMatchTeam(SPA.bidteam) || $('soldTeam').value; }
+  renderLive(); renderSPABanner(m);
+}
+function renderSPABanner(m){
+  const el=$('spaBanner'); if(!el) return;
+  if(!SPA.on){ el.innerHTML=""; return; }
+  const lead=spaMatchTeam(SPA.bidteam), mine=lead===MY;
+  const name=m&&m.player? (SPA.lastPlayer? SPA.lastPlayer.name : (m.player.name||"Unknown player")+" (not matched)") : "Waiting for next player…";
+  el.innerHTML=`<div class="verdict ${mine?"v-go":"v-care"}" style="margin:0 0 12px;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+    <span style="background:#ff3b3b;color:#fff;border-radius:6px;padding:2px 8px;font-size:12px">● LIVE</span>
+    <b>${esc(name)}</b><span>Current bid <b style="font-size:20px">${fmt(SPA.bid)}</b></span>
+    <span>${SPA.bidteam? (mine?"🦏 <b>Mavericks lead</b>":`Leading: <b>${esc(lead||SPA.bidteam)}</b>`) : "No bid yet"}</span>
+    <span class="mut" style="margin-left:auto;font-size:12px">from Super Player Auction · sales record automatically</span></div>`;
+}
+window.addEventListener('message', e=>{ if(e.origin!==SPA_ORIGIN || !e.data || !e.data.mmwr) return; try{ handleSPA(e.data); }catch(err){ console.log(err); } });
+setInterval(()=>{ if(SPA.on && Date.now()-SPA.at>15000){ SPA.on=false; const el=$('spaBanner'); if(el) el.innerHTML='<div class="verdict v-stop" style="margin:0 0 12px">Live link lost — click <b>MM Live Link</b> again on the Super Player Auction tab.</div>'; } },5000);
+
+setTimeout(function(){ const box=$('liveLinkBox'); if(!box) return;
+  if(IN_CLAUDE){ box.innerHTML='<div class="mut">The automatic live link works in the GitHub version: <b>knplseason7.github.io/mmwr</b> (open it in Chrome next to the Super Player Auction screen).</div>'; return; }
+  box.innerHTML=`<p class="mut" style="margin-top:0">One-time setup: drag this button to your Chrome bookmarks bar (or right-click → Bookmark link).</p>
+   <a class="btn" style="display:inline-block;text-decoration:none;font-size:15px" href="javascript:(function(){var%20WR='https://knplseason7.github.io';if(!window.firebase||typeof%20actid==='undefined'||typeof%20player==='undefined'){alert('Open%20the%20Super%20Player%20Auction%20screen%20of%20the%20KNPL-7%20auction%20first,%20then%20click%20MM%20Live%20Link.');return;}var%20W=window.open(WR+'/mmwr/#live','mmwr');var%20P=Array.isArray(player)?player:Object.values(player||{}),T=Array.isArray(teams)?teams:Object.values(teams||{}),C=Array.isArray(category)?category:Object.values(category||{});var%20tn={},cn={},pc={};T.forEach(function(t){tn[t.tid]=t.name;});C.forEach(function(c){cn[c.cid]=c.cname;});P.forEach(function(p){pc[p.pcode]=p;});function%20pinfo(code){var%20p=pc[code];return%20p?{pcode:code,name:p.pname,reg:String(p.boller||'')+'%20'+String(p.detail||'')+'%20'+String(p.fname||''),cat:cn[p.isstarb]||''}:{pcode:code};}function%20send(m){try{if(W&&!W.closed)W.postMessage(m,WR);}catch(e){}}var%20sold=P.filter(function(p){return%20p.tmid&&+p.points>0;}).map(function(p){var%20i=pinfo(p.pcode);i.team=tn[p.tmid]||'';i.price=Math.round(+p.points);return%20i;});var%20last=null;firebase.database().ref('auction/'+actid).on('value',function(s){var%20v=s.val()||{},tl=v.teamlist||{},ts={};Object.keys(tl).forEach(function(k){ts[tn[k]||k]={rm:+tl[k].rmpoint||0,n:+tl[k].tplayer||0};});last={mmwr:1,type:'live',actid:actid,player:v.pcode?pinfo(v.pcode):null,bid:+v.bidpoint||0,bidteam:tn[v.bidteam]||'',soldout:v.soldout||0,teams:ts};send(last);});var%20tick=0;setInterval(function(){tick++;if(tick%5===1)send({mmwr:1,type:'init',actid:actid,sold:sold});if(last)send(last);},2000);var%20b=document.createElement('div');b.textContent='%F0%9F%A6%8F%20MM%20Live%20Link%20ON';b.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99999;background:#f2b134;color:#1a1205;font:700%2013px%20sans-serif;padding:6px%2010px;border-radius:8px';document.body.appendChild(b);})();" onclick="event.preventDefault();toast('Drag this button to the bookmarks bar');">🦏 MM Live Link</a>
+   <ol class="mut" style="font-size:13px;margin-top:12px"><li>On auction day, open the KNPL-7 auction <b>screen</b> on Super Player Auction in Chrome.</li>
+   <li>Click <b>🦏 MM Live Link</b> on the bookmarks bar. It opens this War Room in a new tab and links the two.</li>
+   <li>From then on the player on the block, the current bid, the leading team and every sale (any team) flow in automatically — no typing. Keep both tabs open.</li></ol>
+   <div class="explain">If the link drops (e.g. the auction tab reloads) a red banner appears — click the bookmark again. Sales already made are picked up when you reconnect.</div>`;
+  if(location.hash==='#live'){ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==='live')); document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-live')); }
+},0);
 /* ================= TEAM BUILDER ================= */
 let TB_OPEN=null;
 function tbPlan(){ return (S.myPlan||[]).map(id=>S.players[id]).filter(p=>p && isAvail(p)); }

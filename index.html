@@ -147,11 +147,11 @@ body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{displ
     <div class="row" style="justify-content:space-between"><h3 style="margin:0">Best possible Mavericks squad</h3>
       <div class="row">
         <select id="bsPrice"><option value="est">Prices: market estimate</option><option value="base">Prices: base (best case)</option></select>
-        <label class="row" style="gap:4px"><span>Buffer %</span><input id="bsBuffer" type="number" value="10" step="5" style="width:70px"></label>
+        <label class="row" style="gap:4px"><span>Keep for KNPL-8/9</span><input id="bsKeep" type="number" value="0" step="1000" style="width:90px"></label>
         <label><input type="checkbox" id="bsZone"> CBL/NPL zone only</label>
         <button class="btn" id="bsGo">Generate squad</button>
       </div></div>
-    <div id="bestSquad" style="margin-top:12px"><div class="mut">Builds the strongest 14 around your owner slot, drafts and buys — within your purse, the Skill Rating cap and 8 Rising Stars — aiming at your vision: keeper, 6–7 all-rounders, 2 bowlers, 2 hitters + an anchor, 2 new faces, Thrissur/Ernakulam first. Other teams' probable drafts are left out.</div></div>
+    <div id="bestSquad" style="margin-top:12px"><div class="mut">Builds the best full 14 — owner and drafts at fixed Draft Points, 11 picks with a maximum bid each — inside 1,00,000 points, the 560 Skill Rating cap and the Round 1 category limits, aiming at your vision. Shows which teams want each pick and how far they may go.</div></div>
   </div>
   <div class="grid g2" style="margin-top:14px">
     <div class="card"><h3>Squad composition</h3><div id="dashCats"></div><div id="dashAlerts" style="margin-top:12px"></div></div>
@@ -179,7 +179,7 @@ body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{displ
       <h3 style="margin-top:16px">2 · Current bid</h3>
       <div class="row"><input id="liveBid" type="number" step="100" placeholder="0">
         <div class="field"><span>My walk-away (optional)</span><input id="liveMyVal" type="number" step="100" style="width:140px"></div></div>
-      <div class="qb"><button data-add="100">+100</button><button data-add="200">+200</button><button data-add="500">+500</button><button data-add="1000">+1,000</button><button data-add="base">Base</button><button data-add="clear">Clear</button></div>
+      <div class="qb"><button data-add="next" style="background:var(--gold);color:#1a1205">Next bid ▲</button><button data-add="100">+100</button><button data-add="200">+200</button><button data-add="500">+500</button><button data-add="1000">+1,000</button><button data-add="base">Base</button><button data-add="clear">Clear</button></div>
       <div id="liveVerdict"></div>
     </div>
     <div class="card" style="margin-top:14px">
@@ -279,17 +279,18 @@ body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{displ
 <!-- RULES -->
 <section class="view" id="v-rules">
   <div class="grid g2">
-    <div class="card"><h3>Auction rules digest</h3>
+    <div class="card"><h3>Auction rules (KNPL-7 rule book)</h3>
       <ul class="tight">
-        <li><b>Squad:</b> 14 players per team, including the owner and drafted players.</li>
-        <li><b>Purse:</b> 1,00,000 points per team — cannot be exceeded.</li>
-        <li><b>Skill Rating cap:</b> sum of all 14 ratings ≤ <b>560</b>, plus a one-time <b>+25 bonus</b> usable once (squad cap or retention cap) before the next mega auction.</li>
-        <li><b>Draft (optional):</b> up to 3 incl. owner; only players who chose Madhura Mavericks as preferred team. "Any Team" players go straight to the pool. Each draft costs a fixed point deduction plus a mandatory draft fee (fee also acts as tie-breaker).</li>
-        <li><b>Draft point rounding:</b> up to next 100 (1,000–2,000), 200 (2,000–8,000), 400 (8,000–10,000), 500 (above 10,000).</li>
-        <li><b>Category limits (proposed):</b> once a team reaches its limit in a category it can't bid in that category in round 1; unsold players return in round 2 with no restriction. Confirm when rules publish on 25 Nov.</li>
-        <li><b>Platform:</b> Super Player Auction Platform — one login per team, one bidder, BID UP. No second login with the same credentials.</li>
-        <li><b>Random pick:</b> players come up by acrylic coaster draw.</li>
-        <li><b>Pool freeze:</b> once the final pool (30 Nov) is published, no changes until next season.</li>
+        <li><b>Squad:</b> exactly 14 incl. owner and drafted players (one extra only via Round 4).</li>
+        <li><b>Purse:</b> 1,00,000 points for KNPL-7, 8 and 9 together — unspent points carry forward. Draft Points come off first.</li>
+        <li><b>Skill Rating cap:</b> 14 players ≤ 560; one-time +25 bonus (squad cap 585 or retention cap 325), declared before the bid that needs it.</li>
+        <li><b>Draft:</b> up to 3 incl. owner; only players who chose your team; max 1 Conqueror and 2 Dominators (not 2 Apex); with 3 players at least 1 Rising Star. Draft Point = Base Point + Base Point × SR ÷ 100, rounded up.</li>
+        <li><b>Round 1 limits:</b> Conqueror 1 · Dominator 3 (Apex 1) · Rising Star 10 (Elite 7, Core 4). <b>Every round:</b> max 6 Conqueror + Dominator → at least 8 Rising Stars.</li>
+        <li><b>Reserves on every bid:</b> 2,000 points and the average Rising Star Core rating (~19) for each place still empty after this player.</li>
+        <li><b>Bid steps:</b> +100 (1,000–2,000), +200 (2,000–8,000), +400 (8,000–10,000), +500 above. A bid can't be withdrawn.</li>
+        <li><b>Rounds:</b> R1 category pools, Conquerors first (C/D pools by rank if &lt;10 expected unsold) → R2 unsold players one category lower base point, no category limits → R3 teams short of 14 → R4 cash bid for released players.</li>
+        <li><b>Ties:</b> closed cash bid, minimum the category Base Price ₹; equal offers by lot.</li>
+        <li><b>Platform:</b> one login, one bidder, BID UP; bidding pauses and resumes from the last recorded bid if anything fails.</li>
       </ul>
     </div>
     <div class="card"><h3>Tournament rules that shape the squad</h3>
@@ -336,12 +337,15 @@ body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{displ
       <li>Project Settings → Script properties → add <b>LOGIN_USER</b> (your mobile number) and <b>LOGIN_PASS</b> (your password).</li>
       <li>Deploy → New deployment → Web app → Execute as <b>Me</b>, access <b>Anyone</b> → copy the URL.</li>
       <li>On the login screen, paste the URL once and log in with your mobile number and password.</li></ol></details>
-    <div class="row" style="margin-top:12px">
-      <label class="field"><span>Conqueror base</span><input type="number" data-cfg="baseC" style="width:100px"></label>
-      <label class="field"><span>Dominator base</span><input type="number" data-cfg="baseD" style="width:100px"></label>
-      <label class="field"><span>Rising Star base</span><input type="number" data-cfg="baseR" style="width:100px"></label>
-    </div>
-    <div class="note">Base prices default to the Jan 2025 values (9,000 / 4,500 / 1,500). Update them from the Skill Rating page once confirmed.</div>
+    <h3 style="margin-top:16px">Auction values (KNPL-7 rules · provisional until NPL-5)</h3>
+    <table><tr><th>Category</th><th class="n">Skill Rating</th><th class="n">Base Point</th><th class="n">Base Price ₹</th><th class="n">Round 1 limit / team</th></tr>
+      <tr><td>Conqueror Vanguard</td><td class="n">85–100</td><td class="n">12,000</td><td class="n">10,000</td><td class="n" rowspan="2">1 Conqueror</td></tr>
+      <tr><td>Conqueror Core</td><td class="n">75–84</td><td class="n">10,000</td><td class="n">8,000</td></tr>
+      <tr><td>Dominator Apex</td><td class="n">63–74</td><td class="n">8,000</td><td class="n">6,000</td><td class="n">3 Dominators · Apex max 1</td></tr>
+      <tr><td>Dominator Core</td><td class="n">50–62</td><td class="n">6,000</td><td class="n">4,000</td><td class="n"></td></tr>
+      <tr><td>Rising Star Elite</td><td class="n">25–49</td><td class="n">4,000</td><td class="n">2,000</td><td class="n">10 RS · Elite max 7</td></tr>
+      <tr><td>Rising Star Core</td><td class="n">0–24</td><td class="n">2,000</td><td class="n">1,000</td><td class="n">Core max 4</td></tr></table>
+    <div class="explain">Draft Point = Base Point + Base Point × Skill Rating ÷ 100, rounded up (100 / 200 / 400 / 500 steps). Every round: max 6 Conqueror + Dominator. Reserves: 2,000 points and the average Rising Star Core rating for every empty place. Bid steps: +100 (1,000–2,000), +200 (2,000–8,000), +400 (8,000–10,000), +500 above.</div>
     <h3 style="margin-top:16px">Probable draft list</h3>
     <div class="row"><input type="file" id="draftFile" accept=".xlsx,.xls,.csv"><span id="draftMsg" class="mut"></span></div>
     <div class="explain">The probable draft list is already built in (served after login). Upload a newer .xlsx only if it changes before teams submit — it stays on this device. Confirmed drafts from the registration sheet replace it automatically. Phone numbers are ignored.</div>
@@ -468,6 +472,16 @@ const avgOf = a => a.length? a.reduce((x,y)=>x+y,0)/a.length : 0;
 const TEAMS = ["Kombans of Pataleeputhra","Madhura Mavericks","Mighty Midhilas","Kalinga United","Varahas of Vijayanagara","Kaaliyanz of Dwaraka","Guardians of Kamboja","Ayodhya Warriors","Jaguars of Jhansi","Gandhara Giants","Devils of Chithrakoot","Kurukshetra Yodhas","Vamos Vrindavan","Knights of Kanchi","Spartans of Nalanda","Panchaala Panthers"];
 const CATS = {CV:"Conqueror Vanguard",CC:"Conqueror Core",DA:"Dominator Apex",DC:"Dominator Core",RSE:"Rising Star Elite",RSC:"Rising Star Core"};
 const GROUP = c => c==="CV"||c==="CC"?"C":c==="DA"||c==="DC"?"D":c==="RSE"||c==="RSC"?"R":"?";
+/* KNPL-7 Mega Auction Rules (provisional until NPL-5) */
+const BASE_PT = {CV:12000,CC:10000,DA:8000,DC:6000,RSE:4000,RSC:2000};
+const BASE_RS = {CV:10000,CC:8000,DA:6000,DC:4000,RSE:2000,RSC:1000};
+const CAT_RANK = {CV:6,CC:5,DA:4,DC:3,RSE:2,RSC:1,NA:0};
+const R1 = {C:1, D:3, DA:1, R:10, RSE:7, RSC:4, CD:6};
+const bidStep = v => v<2000?100: v<8000?200: v<10000?400:500;
+const roundUpDraft = v => { const s=bidStep(v); return Math.ceil(v/s)*s; };
+function draftPoint(p){ const b=BASE_PT[p.cat]||2000; return roundUpDraft(b + b*(p.rating||0)/100); }
+function roundBidDown(v){ v=Math.floor(v); if(v<2000) return Math.floor(v/100)*100; if(v<8000) return Math.floor(v/200)*200; if(v<10000) return 8000+Math.floor((v-8000)/400)*400; return Math.floor(v/500)*500; }
+const nextBid = v => v + bidStep(v);
 const GNAME = {C:"Conquerors",D:"Dominators",R:"Rising Stars"};
 const TIMELINE = [
   ["2026-11-09","Phase 1 registration opens (Power Play)"],
@@ -480,7 +494,7 @@ const TIMELINE = [
   ["2027-02-11","KNPL-7 begins · Angamaly"]
 ];
 const DEFAULT = {
-  cfg:{useDrafts:true,baseC:9000,baseD:4500,baseR:1500,purse:100000,squad:14,cap:560,bonus:25,useBonus:false,rivalBonus:true,minBase:0,minRating:0,rsNeed:8,retCap:280,retN:6,limC:0,limD:0,limR:0},
+  cfg:{round:1,useDrafts:true,baseC:9000,baseD:4500,baseR:1500,purse:100000,squad:14,cap:560,bonus:25,useBonus:false,rivalBonus:true,minBase:0,minRating:0,rsNeed:8,retCap:300,retN:6,limC:0,limD:0,limR:0},
   players:{}, // id -> {id,name,cat,rating,base,district,pref,woh,status,team,price,star,note,pre}
   savedAt:0
 };
@@ -513,12 +527,12 @@ function catCode(s){
   return "NA";
 }
 const tag = c => `<span class="tag t-${c}">${c==="NA"?"—":c}</span>`;
-function minBase(){ if(S.cfg.minBase>0) return S.cfg.minBase; const b=P().map(p=>p.base).filter(x=>x>0); return b.length?Math.min(...b):1000; }
-function minRating(){ if(S.cfg.minRating>0) return S.cfg.minRating; const r=P().filter(p=>p.status!=="Sold"&&p.status!=="Mine"&&!p.team).map(p=>p.rating).filter(x=>x>0); return r.length?Math.min(...r):0; }
+function minBase(){ return S.cfg.minBase>0 ? S.cfg.minBase : 2000; }
+function minRating(){ if(S.cfg.minRating>0) return S.cfg.minRating; const r=P().filter(p=>p.cat==="RSC" && !p.team && !p.isOwner && !p.draftTeam).map(p=>p.rating||0); return r.length? Math.round(r.reduce((a,b)=>a+b,0)/r.length) : 19; }
 
 function teamState(team){
   const ps = P().filter(p=>p.team===team || (!p.team && S.cfg.useDrafts!==false && ((p.ownerOf && typeof sameTeam==='function' && sameTeam(p.ownerOf,team)) || (p.draftTeam && typeof sameTeam==='function' && sameTeam(p.draftTeam,team)))));
-  const spent = ps.reduce((a,p)=>a+(p.price||0),0);
+  const spent = ps.reduce((a,p)=>a+(p.team? (p.price||0) : draftPoint(p)),0);
   const rating = ps.reduce((a,p)=>a+(p.rating||0),0);
   const isMe = team===MY;
   const cap = S.cfg.cap + ((isMe?S.cfg.useBonus:S.cfg.rivalBonus)?S.cfg.bonus:0);
@@ -527,19 +541,28 @@ function teamState(team){
   const mb = minBase(), mr = minRating();
   const maxBid = slots>0 ? purseLeft - (slots-1)*mb : 0;
   const maxRate = slots>0 ? cap - rating - (slots-1)*mr : 0;
-  const g = {C:0,D:0,R:0,"?":0}; ps.forEach(p=>g[GROUP(p.cat)]++);
-  return {ps,spent,rating,cap,slots,purseLeft,maxBid,maxRate,g};
+  const g = {C:0,D:0,R:0,"?":0}, sub={CV:0,CC:0,DA:0,DC:0,RSE:0,RSC:0}; ps.forEach(p=>{ g[GROUP(p.cat)]++; if(sub[p.cat]!=null) sub[p.cat]++; });
+  return {ps,spent,rating,cap,slots,purseLeft,maxBid:Math.max(0,roundBidDown(maxBid)),maxRate,g,sub};
 }
-function catLimitHit(team,cat){
-  const t=teamState(team), grp=GROUP(cat), lim={C:S.cfg.limC,D:S.cfg.limD,R:S.cfg.limR}[grp];
-  return lim>0 && t.g[grp]>=lim;
+function limitReason(t,cat,round){
+  const grp=GROUP(cat);
+  if((grp==="C"||grp==="D") && t.g.C+t.g.D>=R1.CD) return "max 6 Conqueror + Dominator";
+  if(round===2) return "";
+  if(grp==="C" && t.g.C>=R1.C) return "Conqueror limit (1) in Round 1";
+  if(grp==="D" && t.g.D>=R1.D) return "Dominator limit (3) in Round 1";
+  if(cat==="DA" && t.sub.DA>=R1.DA) return "Dominator Apex limit (1) in Round 1";
+  if(grp==="R" && t.g.R>=R1.R) return "Rising Star limit (10) in Round 1";
+  if(cat==="RSE" && t.sub.RSE>=R1.RSE) return "Rising Star Elite limit (7) in Round 1";
+  if(cat==="RSC" && t.sub.RSC>=R1.RSC) return "Rising Star Core limit (4) in Round 1";
+  return "";
 }
+function catLimitHit(team,cat,round){ return !!limitReason(teamState(team),cat,round); }
 function canTake(team,p){
   const t=teamState(team);
   if(t.slots<=0) return {ok:false,why:"Squad full"};
   if(p.rating>t.maxRate) return {ok:false,why:`Cap: room for ${fmt(t.maxRate)}`};
-  if(t.maxBid < (p.base||0)) return {ok:false,why:"Purse short"};
-  if(catLimitHit(team,p.cat) && p.status!=="Unsold") return {ok:false,why:`${GNAME[GROUP(p.cat)]} limit reached`};
+  if(t.maxBid < (BASE_PT[p.cat]||p.base||0)) return {ok:false,why:"Purse short (points reserve)"};
+  const lr=limitReason(t,p.cat, (p.status==="Unsold"||S.cfg.round===2)?2:1); if(lr) return {ok:false,why:lr};
   // RS slot squeeze
   if(team===MY && GROUP(p.cat)!=="R"){
     const rsHave=t.g.R, rsNeed=Math.max(0,S.cfg.rsNeed-rsHave);
@@ -746,7 +769,7 @@ function renderLive(){
       <div><div class="mut">Base</div><div class="big" style="font-size:36px">${fmt(p.base)}</div></div>
     </div>${k6Label(p.name)?`<div class="pill" style="margin-top:10px">${esc(k6Label(p.name))}</div>`:""}${p.note?`<div class="note">${esc(p.note)}</div>`:""}${p.team?`<div class="verdict v-care">Already sold to ${esc(p.team)} for ${fmt(p.price)}.</div>`:""}`;
   let cls,msg;
-  let rec=Infinity; try{ if(p.stats && typeof mmFit==='function'){ const ff=mmFit(p), mk=marketEst(p); rec=Math.round(mk.est*(0.7+ff.score/100*0.8)/100)*100; } }catch(e){}
+  let rec=Infinity; try{ if(p.stats && typeof mmFit==='function'){ const ff=mmFit(p), mk=marketEst(p); rec=roundBidDown(mk.est*(0.7+ff.score/100*0.8)); } }catch(e){}
   const ceiling = Math.min(t.maxBid, myVal||Infinity, rec);
   if(!c.ok){ cls="v-stop"; msg=`DON'T BID — ${c.why}.`; }
   else if(bid>t.maxBid){ cls="v-stop"; msg=`STOP — ${fmt(bid)} is over our max bid of ${fmt(t.maxBid)}.`; }
@@ -937,6 +960,25 @@ function applySeed(){
   const src=draftSource();
   P().forEach(p=>{ delete p.draftTeam; p.isOwner=!!p.ownerOf; p.inPool = S.poolIds ? S.poolIds.includes(p.id) : true; });
   src.list.forEach(([id,t,team])=>{ const p=S.players[id]; if(!p) return; if(String(t).toUpperCase()==="OWNER"){ p.isOwner=true; if(team && !p.ownerOf) p.ownerOf=team; } else p.draftTeam=t; });
+  P().forEach(p=>{ p.base = BASE_PT[p.cat] || p.base || 2000; delete p.draftDropped; });
+  if(!src.final) trimDrafts();
+}
+/* Draft rule: up to 3 incl. owner; max 1 Conqueror, 2 Dominators, not 2 Dominator Apex; with 3 players at least 1 Rising Star.
+   When the probable list names more, keep the highest-category valid picks. */
+function draftValid(set){
+  let C=0,D=0,DA=0,R=0; set.forEach(p=>{const g=GROUP(p.cat); if(g==="C")C++; else if(g==="D"){D++; if(p.cat==="DA")DA++;} else R++;});
+  return set.length<=3 && C<=1 && D<=2 && DA<=1 && !(set.length===3 && R<1) && !(C===1&&D===2);
+}
+function trimDrafts(){
+  const groups={};
+  P().filter(p=>p.draftTeam).forEach(p=>{ const k=normTeam(p.draftTeam); (groups[k] ||= []).push(p); });
+  Object.values(groups).forEach(list=>{
+    const team=list[0].draftTeam;
+    const owner=P().find(o=>o.ownerOf && normTeam(o.ownerOf)===normTeam(team));
+    const chosen=owner?[owner]:[];
+    list.sort((a,b)=>(CAT_RANK[b.cat]-CAT_RANK[a.cat])||((b.rating||0)-(a.rating||0)));
+    list.forEach(p=>{ if(chosen.length<3 && draftValid([...chosen,p])) chosen.push(p); else { p.draftDropped=p.draftTeam; delete p.draftTeam; } });
+  });
 }
 function isAvail(p){ return !p.team && !p.isOwner && !p.draftTeam && p.inPool!==false && !/reject/i.test(p.regStatus||""); }
 function applyMeta(j){
@@ -1037,9 +1079,10 @@ function marketEst(p){
     const hp=[]; if(k&&k[2]>=0&&k[3]>0) hp.push(k[3]*1.14); if(c&&c[2]>=0&&c[3]>0) hp.push(c[3]/1.15*1.14);
     if(hp.length){ est=0.5*est+0.5*avgOf(hp); src="past auction prices + rating rank"; } }
   const base=p.base||catBase(p.cat);
-  return {est:Math.max(base, Math.round(est/100)*100), src};
+  return {est:Math.max(base, roundBidDown(est)), src};
 }
-function catBase(c){ const g=GROUP(c); return g==="C"?(S.cfg.baseC||9000): g==="D"?(S.cfg.baseD||4500): (S.cfg.baseR||1500); }
+function catBase(c){ return BASE_PT[c]||2000; }
+function _oldCatBase(c){ const g=GROUP(c); return g==="C"?(S.cfg.baseC||9000): g==="D"?(S.cfg.baseD||4500): (S.cfg.baseR||1500); }
 
 /* ---- MM fit to the vision ---- */
 function mmComposition(){
@@ -1086,8 +1129,8 @@ function renderIntel(p){
   const pr=profile(p), d=pr.d, s=p.stats, fit=mmFit(p), mk=marketEst(p), t=teamState(MY);
   const rivals=TEAMS.filter(x=>x!==MY).map(x=>rivalInterest(x,p)).sort((a,b)=>(b.ok-a.ok)||(b.score-a.score));
   const hot=rivals.filter(r=>r.ok && r.score>=35);
-  const rivalCeil = hot.length? Math.max(...hot.map(r=>Math.min(r.maxBid, Math.round(mk.est*(0.75+r.score/100*0.8)/100)*100))) : (p.base||catBase(p.cat));
-  const myCeil = Math.min(t.maxBid, Math.round(mk.est*(0.7+fit.score/100*0.8)/100)*100);
+  const rivalCeil = hot.length? Math.max(...hot.map(r=>Math.min(r.maxBid, roundBidDown(mk.est*(0.75+r.score/100*0.8))))) : (p.base||catBase(p.cat));
+  const myCeil = Math.min(t.maxBid, roundBidDown(mk.est*(0.7+fit.score/100*0.8)));
   const base=p.base||catBase(p.cat);
   let action, cls;
   if(!canTake(MY,p).ok){ action=`Can't take him: ${canTake(MY,p).why}.`; cls="v-stop"; }
@@ -1221,7 +1264,7 @@ $('askClear').onclick=()=>{ if(askAbort) askAbort.abort(); askMsgs=[]; askBusy=f
 $('askSend').onclick=()=>{ const v=$('askInput').value; $('askInput').value=''; askSend(v); };
 $('askInput').addEventListener('keydown',e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); $('askSend').click(); } });
 
-/* ================= BEST SQUAD BUILDER ================= */
+/* ================= BEST SQUAD BUILDER (rules-based) ================= */
 function mmBaseFit(p){
   const pr=profile(p); let s=0;
   s += pr.zone===2?18: pr.zone===1?10:0;
@@ -1230,69 +1273,124 @@ function mmBaseFit(p){
   s += pr.perf*0.30 + pr.field*0.08;
   return s;
 }
+function rivalBidders(p, est){
+  return TEAMS.filter(x=>x!==MY).map(x=>rivalInterest(x,p)).filter(r=>r.ok && r.score>=35)
+    .map(r=>({team:r.team, score:r.score, why:r.why, max: Math.max(BASE_PT[p.cat]||2000, Math.min(r.maxBid, roundBidDown(est*(0.75+r.score/100*0.8)))) }))
+    .sort((a,b)=>b.max-a.max||b.score-a.score);
+}
 function optimiseSquad(opts){
   if(!INTEL.pct.rpm) buildIntel();
-  const V=S.cfg.vision||VISION_DEFAULT, core=teamCore(MY), t=teamState(MY);
+  const V=S.cfg.vision||VISION_DEFAULT, core=teamCore(MY);
   const slots=S.cfg.squad-core.length;
-  const purseLeft = S.cfg.purse - core.reduce((a,q)=>a+(q.price||0),0);
+  const coreCost = q => q.team ? (q.price||0) : draftPoint(q);
+  const purseLeft = S.cfg.purse - core.reduce((a,q)=>a+coreCost(q),0) - (opts.keep||0);
   const cap = S.cfg.cap + (S.cfg.useBonus?S.cfg.bonus:0);
   const ratingLeft = cap - core.reduce((a,q)=>a+(q.rating||0),0);
-  const pool=P().filter(p=>isAvail(p) && p.rating>0 && p.stats && !(opts.zoneOnly && profile(p).zone===0));
-  const C = pool.map(p=>{ const pr=profile(p); const est=marketEst(p).est; const base=p.base||catBase(p.cat);
-    const cost = opts.priceMode==="base"? base : Math.round(Math.max(base, est*(1+opts.buffer/100))/100)*100;
-    return {p,pr,cost,rating:p.rating,val:mmBaseFit(p)+p.rating*0.45,R:GROUP(p.cat)==="R",wk:pr.keeper,ar:pr.role==="All-rounder",bowl:pr.role==="Bowler",hit:pr.hitter,anchor:pr.anchor,newf:pr.newFace}; });
-  const coreCnt={wk:0,ar:0,bowl:0,hit:0,anchor:0,newf:0,R:0};
-  core.forEach(q=>{const pr=profile(q); if(pr.keeper)coreCnt.wk++; if(pr.role==="All-rounder")coreCnt.ar++; if(pr.role==="Bowler")coreCnt.bowl++; if(pr.hitter)coreCnt.hit++; if(pr.anchor)coreCnt.anchor++; if(pr.newFace)coreCnt.newf++; if(GROUP(q.cat)==="R")coreCnt.R++;});
+  const cc={C:0,D:0,R:0,CV:0,CC:0,DA:0,DC:0,RSE:0,RSC:0};
+  core.forEach(q=>{ cc[GROUP(q.cat)]++; if(cc[q.cat]!=null) cc[q.cat]++; });
+  const pool=P().filter(p=>isAvail(p) && p.rating>0 && p.stats && BASE_PT[p.cat] && !(opts.zoneOnly && profile(p).zone===0));
+  const C = pool.map(p=>{ const pr=profile(p); const base=BASE_PT[p.cat]; const est=marketEst(p).est;
+    const cost = opts.priceMode==="base"? base : Math.max(base, roundBidDown(est));
+    return {p,pr,cost,base,est,rating:p.rating,val:mmBaseFit(p)+p.rating*0.45,cat:p.cat,g:GROUP(p.cat),wk:pr.keeper,ar:pr.role==="All-rounder",bowl:pr.role==="Bowler",hit:pr.hitter,anchor:pr.anchor,newf:pr.newFace}; });
+  const coreCnt={wk:0,ar:0,bowl:0,hit:0,anchor:0,newf:0};
+  core.forEach(q=>{const pr=profile(q); if(pr.keeper)coreCnt.wk++; if(pr.role==="All-rounder")coreCnt.ar++; if(pr.role==="Bowler")coreCnt.bowl++; if(pr.hitter)coreCnt.hit++; if(pr.anchor)coreCnt.anchor++; if(pr.newFace)coreCnt.newf++;});
   const W={wk:60,ar:22,bowl:40,hit:30,anchor:30,newf:20};
+  function limitsOK(sel){
+    const k={...cc}; sel.forEach(x=>{ k[x.g]++; k[x.cat]++; });
+    return k.C<=R1.C && k.D<=R1.D && k.DA<=R1.DA && k.R<=R1.R && k.RSE<=R1.RSE && k.RSC<=R1.RSC && k.C+k.D<=R1.CD;
+  }
+  const sortR=C.map(x=>x.rating).sort((a,b)=>a-b), sortC=C.map(x=>x.cost).sort((a,b)=>a-b);
+  const resR=n=>sortR.slice(0,n).reduce((a,b)=>a+b,0), resC=n=>sortC.slice(0,n).reduce((a,b)=>a+b,0);
   function score(sel){
     let v=0, cost=0, rat=0; const c={...coreCnt};
-    sel.forEach(x=>{ v+=x.val; cost+=x.cost; rat+=x.rating; ["wk","ar","bowl","hit","anchor","newf"].forEach(k=>{ if(x[k]) c[k]++; }); if(x.R) c.R++; });
+    sel.forEach(x=>{ v+=x.val; cost+=x.cost; rat+=x.rating; ["wk","ar","bowl","hit","anchor","newf"].forEach(k=>{ if(x[k]) c[k]++; }); });
     for(const k in W){ const need=k==="ar"?Math.max(6,Math.min(V.ar,7)):V[k]; v -= Math.max(0,need-c[k])*W[k]; }
-    v -= Math.max(0,S.cfg.rsNeed-c.R)*150;
     v -= Math.max(0,slots-sel.length)*400;
-    const feasible = cost<=purseLeft && rat<=ratingLeft && sel.length<=slots;
+    const rem=Math.max(0,slots-sel.length);
+    const feasible = cost+resC(rem)<=purseLeft && rat+resR(rem)<=ratingLeft && sel.length<=slots && limitsOK(sel);
     return {v: feasible? v : -1e9, cost, rat, c, feasible};
   }
-  if(slots<=0) return {sel:[],core,msg:"Squad already full."};
-  // greedy seed: value per cost, prefer needed roles
+  if(slots<=0) return {sel:[],core,msg:"Squad already full.",coreCost};
   let sel=[]; const used=new Set();
-  const order=[...C].sort((a,b)=>(b.val+ (b.wk?30:0)+(b.bowl?15:0)) - (a.val+(a.wk?30:0)+(a.bowl?15:0)));
-  for(const x of order){ if(sel.length>=slots) break; const trial=[...sel,x]; const s=score(trial);
-    const remain=slots-trial.length; const rest=C.filter(y=>!used.has(y)&&y!==x); const cheapest=Math.min(...rest.map(y=>y.cost),1500); const lowR=Math.min(...rest.map(y=>y.rating),10);
-    if(s.cost + remain*cheapest <= purseLeft && s.rat + remain*lowR <= ratingLeft){ sel.push(x); used.add(x); } }
-  // fill any remaining with cheapest Rising Stars
+  const order=[...C].sort((a,b)=>(b.val+(b.wk?30:0)+(b.bowl?15:0))-(a.val+(a.wk?30:0)+(a.bowl?15:0)));
+  for(const x of order){ if(sel.length>=slots) break; const trial=[...sel,x]; if(!limitsOK(trial)) continue; const s=score(trial);
+    const remain=slots-trial.length; const rest=C.filter(y=>!used.has(y)&&y!==x); const cheapest=Math.min(...rest.map(y=>y.cost),2000); const lowR=Math.min(...rest.map(y=>y.rating),minRating());
+    if(s.feasible){ sel.push(x); used.add(x); } }
   for(const x of [...C].sort((a,b)=>a.cost-b.cost)){ if(sel.length>=slots) break; if(used.has(x)) continue; const s=score([...sel,x]); if(s.feasible){ sel.push(x); used.add(x);} }
-  // local search swaps
   let best=score(sel), improved=true, iter=0;
   while(improved && iter<60){ improved=false; iter++;
-    for(let i=0;i<sel.length;i++){ for(const y of C){ if(used.has(y)) continue;
-      const trial=sel.slice(); trial[i]=y; const s=score(trial);
+    for(let i=0;i<sel.length;i++){ for(const y of C){ if(used.has(y)) continue; const trial=sel.slice(); trial[i]=y; const s=score(trial);
       if(s.v>best.v+0.01){ used.delete(sel[i]); used.add(y); sel=trial; best=s; improved=true; } } }
     if(sel.length<slots){ for(const y of C){ if(used.has(y)) continue; const s=score([...sel,y]); if(s.v>best.v+0.01){ sel=[...sel,y]; used.add(y); best=s; improved=true; break; } } } }
-  return {sel, core, best, purseLeft, ratingLeft, slots, alts:C.filter(x=>!used.has(x)).sort((a,b)=>b.val-a.val)};
+  // Repair: if a place is still empty, swap one pick for a cheaper/lower-rated one so the 14th fits
+  let guard=0;
+  while(sel.length<slots && guard++<slots){
+    let bestTrial=null, bestV=-1e18;
+    const free=C.filter(y=>!used.has(y));
+    for(const y of free){ const s=score([...sel,y]); if(s.feasible && s.v>bestV){ bestV=s.v; bestTrial=[...sel,y]; } }
+    if(!bestTrial){
+      const cheap=free.slice().sort((a,b)=>(a.rating-b.rating)||(a.cost-b.cost)).slice(0,40);
+      for(let i=0;i<sel.length;i++) for(const y of cheap) for(const z of cheap){ if(y===z) continue;
+        const trial=sel.slice(); trial[i]=y; trial.push(z); const s=score(trial); if(s.feasible && s.v>bestV){ bestV=s.v; bestTrial=trial; } }
+    }
+    if(!bestTrial) break;
+    sel=bestTrial; used.clear(); sel.forEach(x=>used.add(x)); best=score(sel);
+  }
+  // Max bid per pick: share the spare points by value, keep every max on the bid ladder, total within the purse
+  const slack=Math.max(0, purseLeft-best.cost), Wt=sel.reduce((a,x)=>a+Math.max(1,x.val),0);
+  sel.forEach(x=>{ x.max = Math.max(x.base, roundBidDown(x.cost + slack*Math.max(1,x.val)/Wt)); x.rivals=rivalBidders(x.p, x.est); });
+  let total=sel.reduce((a,x)=>a+x.max,0); // fix rounding overflow
+  for(const x of [...sel].sort((a,b)=>b.max-a.max)){ if(total<=purseLeft) break; const nm=Math.max(x.base, roundBidDown(x.max-bidStep(x.max))); total-=x.max-nm; x.max=nm; }
+  return {sel, core, coreCost, best, purseLeft, ratingLeft, cap, slots, totalMax:total, alts:C.filter(x=>!used.has(x)).sort((a,b)=>b.val-a.val)};
 }
 function renderBestSquad(){
   const box=$('bestSquad'); if(!box) return;
-  if(!P().some(p=>p.stats)){ box.innerHTML='<div class="mut">Sync the registration sheet first (Setup &amp; Data) — the builder needs CricHeroes stats and Skill Ratings.</div>'; return; }
+  if(!P().some(p=>p.stats)){ box.innerHTML='<div class="mut">Load player data first (⚙️ Setup &amp; Data).</div>'; return; }
   if(!draftSource().list.length){ box.innerHTML='<div class="verdict v-stop">The draft list isn\'t loaded, so other teams\' drafted players can\'t be excluded. '+(IN_CLAUDE?'Press Sync in ⚙️ Setup &amp; Data.':'Go to ⚙️ Setup &amp; Data → <b>Refresh player data</b> and log in again.')+'</div>'; return; }
-  const opts={priceMode:$('bsPrice').value, buffer:+$('bsBuffer').value||0, zoneOnly:$('bsZone').checked};
+  const opts={priceMode:$('bsPrice').value, keep:+$('bsKeep').value||0, zoneOnly:$('bsZone').checked};
   const r=optimiseSquad(opts);
   if(!r.best){ box.innerHTML=`<div class="mut">${r.msg||"Nothing to build."}</div>`; return; }
-  const c=r.best.c, V=S.cfg.vision||VISION_DEFAULT;
-  const chk=(l,k,need)=>`<span class="pill" style="border-color:${c[k]>=need?'var(--green)':'var(--red)'}">${l} ${c[k]}/${need}</span>`;
-  const rowP=(q,lock,cost)=>{const pr=profile(q);return `<tr class="${lock?"mine":""}"><td>${esc(q.name)}${lock?' <span class="mut">('+(q.ownerOf?"owner":q.team?"bought":"draft")+')</span>':""}<div class="mut" style="font-size:11px">${esc(q.district||"")}</div></td><td>${tag(q.cat)}</td><td class="n">${q.rating||"–"}</td><td style="font-size:12px">${pr.role}${pr.keeper?" · 🧤":""}${pr.hitter?" · 💥":""}${pr.anchor?" · ⚓":""}${pr.newFace?" · 🆕":""}${pr.youth?" · 🌱":""}</td><td class="n">${lock?fmt(q.price||0):fmt(cost)}</td></tr>`;};
-  box.innerHTML = `<div class="row" style="margin-bottom:8px">${chk("🧤 Keeper","wk",V.wk)}${chk("All-rounders","ar",6)}${chk("Bowlers","bowl",V.bowl)}${chk("💥 Hitters","hit",V.hit)}${chk("⚓ Anchor","anchor",V.anchor)}${chk("🆕 New faces","newf",V.newf)}${chk("Rising Stars","R",S.cfg.rsNeed)}</div>
-   <div class="row mut" style="font-size:13px;margin-bottom:8px">Est. spend <b style="color:var(--ink)">${fmt(r.best.cost)}</b> of ${fmt(r.purseLeft)} left · Skill Rating <b style="color:var(--ink)">${fmt(r.best.rat)}</b> of ${fmt(r.ratingLeft)} room · ${r.sel.length} picks for ${r.slots} slots</div>
-   <div class="scroll" style="max-height:520px"><table><tr><th>Player</th><th>Cat</th><th class="n">SR</th><th>Role</th><th class="n">Pts</th></tr>${r.core.map(q=>rowP(q,true)).join("")}${[...r.sel].sort((a,b)=>b.cost-a.cost).map(x=>rowP(x.p,false,x.cost)).join("")}</table></div>
-   <div class="row" style="margin-top:10px"><button class="btn sm" id="bsStar">Mark these picks as ★★★ targets</button><span class="mut" style="font-size:12px">Back-ups by fit: ${r.alts.slice(0,8).map(x=>esc(x.p.name)).join(", ")}</span></div>
-   <div class="note">Excludes owners, every team's ${draftSource().final?"confirmed":"probable"} drafts, players already sold${S.poolIds?" and anyone outside the final pool":""}. Prices are ${opts.priceMode==="base"?"base prices (best case)":`market estimates${opts.buffer?` +${opts.buffer}%`:""}`}. Rebuild after each sale — it re-plans around your current squad and purse.</div>`;
-  $('bsStar').onclick=()=>{ r.sel.forEach(x=>{ x.p.star=3; if(!x.p.myVal) x.p.myVal=x.cost; }); persist(); renderPool(); renderDash(); toast(`${r.sel.length} players marked ★★★ with walk-away prices`); };
+  const V=S.cfg.vision||VISION_DEFAULT, c=r.best.c;
+  const all=[...r.core.map(q=>({p:q,frozen:true,pts:r.coreCost(q)})), ...[...r.sel].sort((a,b)=>CAT_RANK[b.cat]-CAT_RANK[a.cat]||b.max-a.max).map(x=>({p:x.p,x}))];
+  const k={C:0,D:0,R:0,CV:0,CC:0,DA:0,DC:0,RSE:0,RSC:0}; all.forEach(o=>{k[GROUP(o.p.cat)]++; if(k[o.p.cat]!=null)k[o.p.cat]++;});
+  const ratTot=all.reduce((a,o)=>a+(o.p.rating||0),0), ptsTot=all.reduce((a,o)=>a+(o.frozen?o.pts:o.x.max),0);
+  const chk=(l,ok)=>`<span class="pill" style="border-color:${ok?'var(--green)':'var(--red)'}">${ok?"✓":"✗"} ${l}</span>`;
+  const rows=all.map((o,i)=>{ const p=o.p, pr=profile(p);
+    const who=o.frozen?`<span class="tag t-NA">${p.ownerOf?"OWNER":p.team?"BOUGHT":"DRAFT"}</span>`:"";
+    const comp = o.frozen? '<span class="mut">— fixed —</span>' : (o.x.rivals.length? o.x.rivals.slice(0,3).map(rv=>`<div style="white-space:nowrap"><b>${esc(rv.team.replace(/ of .*/,""))}</b> <span class="mut">(${rv.score})</span> → ~${fmt(rv.max)}${rv.max>o.x.max?' <span class="bad">⚠</span>':''}</div>`).join("") : '<span class="ok">Low competition</span>');
+    return `<tr class="${o.frozen?"mine":""}"><td class="mut">${i+1}</td><td><b>${esc(p.name)}</b> ${who}<div class="mut" style="font-size:11px">${esc(p.district||"")} · ${pr.role}${pr.keeper?" · 🧤":""}${pr.hitter?" · 💥":""}${pr.anchor?" · ⚓":""}${pr.newFace?" · 🆕":""}${pr.youth?" · 🌱":""}</div></td>
+      <td>${tag(p.cat)}</td><td class="n">${p.rating||"–"}</td>
+      <td class="n">${o.frozen?'<span class="mut">'+fmt(o.pts)+'</span>':fmt(o.x.base)}</td>
+      <td class="n">${o.frozen?"":fmt(o.x.est)}</td>
+      <td class="n"><b style="color:var(--gold2);font-size:15px">${o.frozen?fmt(o.pts):fmt(o.x.max)}</b></td>
+      <td style="font-size:12px">${comp}</td></tr>`; }).join("");
+  box.innerHTML = `
+   <div class="row" style="margin-bottom:8px">
+     ${chk(`14 players (${all.length})`, all.length===S.cfg.squad)}
+     ${chk(`Points ${fmt(ptsTot)} / ${fmt(S.cfg.purse)}`, ptsTot<=S.cfg.purse)}
+     ${chk(`Skill Rating ${ratTot} / ${r.cap}`, ratTot<=r.cap)}
+     ${chk(`Conqueror ${k.C}/1`, k.C<=1)} ${chk(`Dominator ${k.D}/3 (Apex ${k.DA}/1)`, k.D<=3&&k.DA<=1)}
+     ${chk(`Rising Stars ${k.R} (Elite ${k.RSE}/7 · Core ${k.RSC}/4)`, k.R>=8&&k.RSE<=7&&k.RSC<=4)}
+   </div>
+   <div class="row" style="margin-bottom:10px">
+     ${chk(`🧤 Keeper ${c.wk}/${V.wk}`, c.wk>=V.wk)} ${chk(`All-rounders ${c.ar}/6`, c.ar>=6)} ${chk(`Bowlers ${c.bowl}/${V.bowl}`, c.bowl>=V.bowl)}
+     ${chk(`💥 Hitters ${c.hit}/${V.hit}`, c.hit>=V.hit)} ${chk(`⚓ Anchor ${c.anchor}/${V.anchor}`, c.anchor>=V.anchor)} ${chk(`🆕 New faces ${c.newf}/${V.newf}`, c.newf>=V.newf)}
+   </div>
+   <div style="overflow-x:auto"><table>
+     <tr><th>#</th><th>Player</th><th>Cat</th><th class="n">SR</th><th class="n">Base pt</th><th class="n">Est. price</th><th class="n">Your max</th><th>Teams that want him → likely max</th></tr>
+     ${rows}
+     <tr><td></td><td><b>Total (14)</b></td><td></td><td class="n"><b>${ratTot}</b></td><td></td><td></td><td class="n"><b>${fmt(ptsTot)}</b></td><td class="mut" style="font-size:12px">${opts.keep?`+ ${fmt(opts.keep)} kept for KNPL-8/9`:""}</td></tr>
+   </table></div>
+   <div class="row" style="margin-top:10px"><button class="btn sm" id="bsStar">Set these as ★★★ targets with "Your max" as walk-away</button></div>
+   <div class="explain" style="margin-top:6px">Back-ups by fit: ${r.alts.slice(0,10).map(x=>`${esc(x.p.name)} (${x.cat}, ${x.rating})`).join(" · ")}</div>
+   <div class="note"><b>How to read it.</b> Owner and draft rows use fixed Draft Points (base point + base point × Skill Rating ÷ 100, rounded up) and are not bid for. <b>Your max</b> is the most to bid for each pick; if you stay within every max, all 14 together stay inside 1,00,000 points, the ${r.cap} Skill Rating cap and the Round 1 category limits (max 6 Conqueror + Dominator, so at least 8 Rising Stars). <b>Teams that want him</b> lists rivals who rate highly for the player (played for them, played with their owner/drafts, district, stats) and an estimate of how far each may go, capped by their own points reserve; ⚠ means a rival may go past your max — line up the back-up. Other teams' probable drafts (max 3 incl. owner, highest categories kept) are excluded. Ratings, categories and drafts are provisional until NPL-5 and the 28 Nov draft.</div>`;
+  $('bsStar').onclick=()=>{ r.sel.forEach(x=>{ x.p.star=3; x.p.myVal=x.max; }); persist(); renderPool(); renderDash(); toast(`${r.sel.length} targets set with walk-away prices`); };
 }
 
 $('bsGo').onclick=renderBestSquad;
 /* ================= AUCTION MODE UI + GITHUB MODE ================= */
 const IN_CLAUDE = !!(window.claude && typeof window.claude.use==="function");
-function renderLiveStatus(){
+function renderLiveStatus(){ setTimeout(()=>{ const rc=$('roundChip'); if(rc) rc.onclick=()=>{ S.cfg.round = S.cfg.round===2?1:2; persist(); renderLive(); }; },0);
   const box=$('liveStatus'); if(!box) return;
   const t=teamState(MY), comp=(typeof mmComposition==='function'&&P().some(p=>p.stats))?mmComposition():null, V=S.cfg.vision||VISION_DEFAULT;
   const rsNeed=Math.max(0,S.cfg.rsNeed-t.g.R);
@@ -1300,13 +1398,14 @@ function renderLiveStatus(){
   box.innerHTML = `<div><span>Purse left</span><b>${fmt(t.purseLeft)}</b></div>
     <div style="border-color:var(--gold)"><span>Max bid now</span><b style="color:var(--gold2)">${fmt(t.maxBid)}</b></div>
     <div><span>Rating room</span><b>${fmt(t.cap-t.rating)}</b><span style="text-transform:none">next ≤ ${fmt(t.maxRate)}</span></div>
-    <div><span>Slots left</span><b>${t.slots}</b></div>
+    <div><span>Slots left</span><b>${t.slots}</b><span style="text-transform:none;cursor:pointer;color:var(--gold2)" id="roundChip">Round ${S.cfg.round===2?"2+ (no category limits)":"1 (category limits on)"} ⇄</span></div>
     <div><span>Rising Stars needed</span><b class="${rsNeed>=t.slots&&rsNeed>0?"bad":rsNeed?"warn":"ok"}">${rsNeed}</b></div>
+    <div><span>Reserves</span><b style="font-size:16px;line-height:1.4;font-family:Inter">${fmt(minBase())} pts · SR ${minRating()} per empty place</b></div>
     <div><span>Still need</span><b style="font-size:16px;line-height:1.4;font-family:Inter">${needs||'<span class="ok" style="font-size:16px">Plan covered</span>'}</b></div>`;
 }
 document.querySelectorAll('.qb button').forEach(b=>b.onclick=()=>{
   const v=b.dataset.add, el=$('liveBid'); let cur=+el.value||0;
-  if(v==="clear") cur=0; else if(v==="base") cur=liveP?(liveP.base||catBase(liveP.cat)):0; else cur = (cur||(liveP?(liveP.base||catBase(liveP.cat)):0)) + (+v);
+  if(v==="clear") cur=0; else if(v==="base") cur=liveP?(liveP.base||catBase(liveP.cat)):0; else if(v==="next") cur = cur? nextBid(cur) : (liveP?catBase(liveP.cat):0); else cur = (cur||(liveP?(liveP.base||catBase(liveP.cat)):0)) + (+v);
   el.value=cur||""; $('soldPrice').value=cur||""; renderLive();
 });
 $('soldMM').onclick=()=>{ $('soldTeam').value=MY; $('soldBtn').click(); };
@@ -1381,7 +1480,7 @@ async function importDraftFile(file){
 const QUICK = [
   ["Should I bid on the player on the block?", ()=>{ if(!liveP) return "Pick the player on the block in 🏏 Auction Mode first.";
      const p=liveP, f=mmFit(p), m=marketEst(p), t=teamState(MY), riv=TEAMS.filter(x=>x!==MY).map(x=>rivalInterest(x,p)).filter(r=>r.ok).sort((a,b)=>b.score-a.score);
-     const ceil=Math.min(t.maxBid, Math.round(m.est*(0.7+f.score/100*0.8)/100)*100);
+     const ceil=Math.min(t.maxBid, roundBidDown(m.est*(0.7+f.score/100*0.8)));
      return `**${p.name}** — fit ${f.score}/100, market ≈ ${fmt(m.est)}.\n- Your ceiling: **${fmt(ceil)}** (max bid now ${fmt(t.maxBid)}).\n- Strongest rivals: ${riv.slice(0,3).map(r=>`${r.team} (${r.score})`).join(", ")||"none"}.\n- Why: ${f.why.join("; ")}.`; }],
   ["What does my squad still need?", ()=>{ const t=teamState(MY), c=mmComposition(), V=S.cfg.vision||VISION_DEFAULT;
      return `**${t.slots} slots** left, **${fmt(t.purseLeft)}** purse, rating room **${fmt(t.cap-t.rating)}**.\n- Keeper ${c.wk}/${V.wk} · All-rounders ${c.ar}/6–7 · Bowlers ${c.bowl}/${V.bowl} · Hitters ${c.hit}/${V.hit} · Anchor ${c.anchor}/${V.anchor} · New faces ${c.newf}/${V.newf}\n- Rising Stars ${t.g.R}/${S.cfg.rsNeed}`; }],

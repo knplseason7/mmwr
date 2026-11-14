@@ -647,6 +647,7 @@ function renderDash(){
     return `<div class="catbox"><div class="mut" style="font-size:12px">${GNAME[g]}</div><div class="v" style="color:var(--${g==="C"?"cq":g==="D"?"dm":"rs"})">${t.g[g]}${lim?`<span class="mut" style="font-size:16px"> / ${lim}</span>`:""}</div></div>`;}).join("")}</div>`;
 
   const al=[];
+  if(P().length && !draftSource().list.length) al.push(`<div class="bad">• Draft list not loaded — drafted players may show as available. ${IN_CLAUDE?"Sync in ⚙️ Setup &amp; Data.":"⚙️ Setup &amp; Data → Refresh player data."}</div>`);
   if(rsGap>0) al.push(`<div class="${rsGap>=t.slots?"bad":rsGap>=t.slots-1?"warn":"mut"}">• Need ${rsGap} more Rising Star${rsGap>1?"s":""} for the RSM opener (8 in the XII)${rsGap>=t.slots?" — every remaining slot must be a Rising Star":""}.</div>`);
   else al.push(`<div class="ok">• Rising Star requirement for the RSM match met.</div>`);
   if(t.slots>0 && t.maxRate < 40) al.push(`<div class="warn">• Cap is tight: next pick can be rated at most ${fmt(t.maxRate)}.</div>`);
@@ -1273,6 +1274,7 @@ function optimiseSquad(opts){
 function renderBestSquad(){
   const box=$('bestSquad'); if(!box) return;
   if(!P().some(p=>p.stats)){ box.innerHTML='<div class="mut">Sync the registration sheet first (Setup &amp; Data) — the builder needs CricHeroes stats and Skill Ratings.</div>'; return; }
+  if(!draftSource().list.length){ box.innerHTML='<div class="verdict v-stop">The draft list isn\'t loaded, so other teams\' drafted players can\'t be excluded. '+(IN_CLAUDE?'Press Sync in ⚙️ Setup &amp; Data.':'Go to ⚙️ Setup &amp; Data → <b>Refresh player data</b> and log in again.')+'</div>'; return; }
   const opts={priceMode:$('bsPrice').value, buffer:+$('bsBuffer').value||0, zoneOnly:$('bsZone').checked};
   const r=optimiseSquad(opts);
   if(!r.best){ box.innerHTML=`<div class="mut">${r.msg||"Nothing to build."}</div>`; return; }

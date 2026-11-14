@@ -5,18 +5,32 @@
  *
  * Setup (one time):
  *  1. script.google.com → New project → paste this file.
- *  2. Project Settings → Script properties → add  ACCESS_CODE = <your private code>
+ *  2. Project Settings → Script properties → add
+ *       LOGIN_USER = your mobile number (10 digits)
+ *       LOGIN_PASS = your password
  *  3. Deploy → New deployment → Web app → Execute as: Me, Who has access: Anyone → Deploy.
- *  4. Copy the Web app URL into the War Room (Setup & Data → Connect data).
+ *  4. Copy the Web app URL into the War Room login screen (first time only).
  */
 const SHEET_ID = '1yLTJPg-2sh2xjuF8jVH6imyHxF99tVRmd8RvdStvZpw';
 const LEAGUES = ['SPL-6','SPL-7','SPL-8','CBL-4','CBL-5','CBL-6','NPL-3','NPL-4','NPL-5','KNPL-4','KNPL-5','KNPL-6','YPL-14','YPL-15','YPL-16'];
 
-function doGet(e) {
-  const code = (e && e.parameter && e.parameter.code) || '';
-  const expected = PropertiesService.getScriptProperties().getProperty('ACCESS_CODE');
-  if (!expected || code !== expected) return json_({ ok: false, error: 'bad_code' });
+function doPost(e) {
+  let body = {};
+  try { body = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (err) {}
+  const props = PropertiesService.getScriptProperties();
+  const user = String(props.getProperty('LOGIN_USER') || '').replace(/\D/g, '').slice(-10);
+  const pass = String(props.getProperty('LOGIN_PASS') || '');
+  const u = String(body.user || '').replace(/\D/g, '').slice(-10);
+  if (!user || !pass || u !== user || String(body.pass || '') !== pass) {
+    Utilities.sleep(800);
+    return json_({ ok: false, error: 'bad_login' });
+  }
+  return json_(buildData_());
+}
 
+function doGet() { return json_({ ok: false, error: 'use_login' }); }
+
+function buildData_() {
   const ss = SpreadsheetApp.openById(SHEET_ID);
   const reg = ss.getSheetByName('Registrations').getDataRange().getValues();
   const head = reg[0].map(String);
@@ -49,7 +63,7 @@ function doGet(e) {
       qual: String(r[c.qual] || ''), regStatus: String(r[c.status] || ''), rating: r[c.rating], cat: String(r[c.cat] || ''),
       prefTeam: String(r[c.pref] || ''), legacy: String(r[c.legacy] || ''), ownerOf: String(r[c.owner] || ''), stats: stats[id] || null };
   });
-  return json_({ ok: true, at: new Date().toISOString(), players });
+  return { ok: true, at: new Date().toISOString(), players };
 }
 
 function json_(o) {

@@ -9,13 +9,13 @@ Auction-day assistant for Madhura Mavericks at the KNPL-7 Mega Auction (12 Dec 2
 - `apps-script/Code.gs` – a small read-only data service for the KNPL-7 registration Google Sheet, protected by your private access code.
 - `logo.png`, `favicon.png` – Madhura Mavericks crest.
 
-**No Skill Ratings, player stats or draft lists are stored in this repo.** They load at run time from the data service (after you enter the access code) or from files you upload on your own device.
+**No Skill Ratings, player stats or draft lists are stored in this repo.** They load at run time from the data service (after you log in) or from files you upload on your own device.
 
 ## One-time setup
 1. **Data service**: script.google.com → New project → paste `apps-script/Code.gs` →
-   Project Settings → Script properties → `ACCESS_CODE` = your private code →
+   Project Settings → Script properties → `LOGIN_USER` = your mobile number, `LOGIN_PASS` = your password →
    Deploy → New deployment → Web app → *Execute as: Me*, *Who has access: Anyone* → copy the URL.
-2. Open the War Room → **⚙️ Setup & Data** → paste the URL and code → **Connect & sync**.
+2. Open the War Room → log in with your mobile number and password (paste the URL once on the login screen).
 3. Upload your probable draft list (.xlsx) in the same screen (kept on this device only).
 
 ## Auction day

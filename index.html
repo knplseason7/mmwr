@@ -109,6 +109,10 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 .askm.assistant{align-self:flex-start;background:var(--panel2);border:1px solid var(--line)}
 #askForm{display:flex;gap:8px;padding:10px;border-top:1px solid var(--line)}
 #askInput{flex:1;resize:none;height:44px;min-height:44px;font-family:Inter;font-size:14px}
+#loginOverlay{position:fixed;inset:0;z-index:100;background:radial-gradient(circle at 50% 20%,#3a0d0d,#0d1420 60%);display:none;align-items:center;justify-content:center;padding:16px}
+.loginbox{width:min(380px,100%);background:var(--panel);border:1px solid var(--gold);border-radius:16px;padding:22px;box-shadow:0 12px 50px rgba(0,0,0,.6)}
+.loginbox input{width:100%;font-size:16px;padding:11px 12px}
+body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{display:none!important}
 @media (max-width:640px){.g2{grid-template-columns:1fr}header h1{font-size:22px}.big{font-size:44px}}
 </style>
 </head>
@@ -329,9 +333,9 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
     <div class="row" id="dataConnect"><button class="btn" id="syncSheetBtn">Sync from Google Sheet</button></div><div id="syncSheetMsg" class="mut" style="margin-top:8px"></div>
     <details style="margin-top:10px"><summary class="mut" style="cursor:pointer">Using the GitHub web page? One-time data service setup</summary>
       <ol class="mut" style="font-size:13px"><li>Open <b>script.google.com</b> → New project, paste the code from <b>apps-script/Code.gs</b> in the mmwr repo.</li>
-      <li>Project Settings → Script properties → add <b>ACCESS_CODE</b> with a private code only you know.</li>
+      <li>Project Settings → Script properties → add <b>LOGIN_USER</b> (your mobile number) and <b>LOGIN_PASS</b> (your password).</li>
       <li>Deploy → New deployment → Web app → Execute as <b>Me</b>, access <b>Anyone</b> → copy the URL.</li>
-      <li>Paste the URL and your code above → Connect &amp; sync. They're remembered on this device only.</li></ol></details>
+      <li>On the login screen, paste the URL once and log in with your mobile number and password.</li></ol></details>
     <div class="row" style="margin-top:12px">
       <label class="field"><span>Conqueror base</span><input type="number" data-cfg="baseC" style="width:100px"></label>
       <label class="field"><span>Dominator base</span><input type="number" data-cfg="baseD" style="width:100px"></label>
@@ -1324,10 +1328,9 @@ function setupDataUI(){
   if(IN_CLAUDE){ /* keep the connector Sync button */ }
   else {
     let saved={}; try{ saved=JSON.parse(localStorage.getItem('mmwr-api')||"{}"); }catch(e){}
-    box.innerHTML=`<label class="field" style="flex:2;min-width:240px"><span>Data service URL (Apps Script web app)</span><input id="apiUrl" value="${esc(saved.url||"")}" placeholder="https://script.google.com/macros/s/…/exec"></label>
-      <label class="field"><span>Access code</span><input id="apiCode" type="password" value="${esc(saved.code||"")}" style="width:150px"></label>
-      <button class="btn" id="apiGo">Connect &amp; sync</button>`;
-    $('apiGo').onclick=syncScript;
+    box.innerHTML=`<button class="btn" id="apiGo">Refresh player data</button><button class="btn sec" id="lgOut">Log out</button>`;
+    $('apiGo').onclick=()=>showLogin("Log in again to refresh player data.");
+    $('lgOut').onclick=logout;
   }
   // backup controls for GitHub mode
   if(!IN_CLAUDE){ const sp=$('savePage'); if(sp){ sp.textContent="Download backup file"; sp.onclick=()=>{ const blob=new Blob([JSON.stringify(S,(k,v)=>k==="_prof"?undefined:v)],{type:"application/json"}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`mm-war-room-backup-${new Date().toISOString().slice(0,10)}.json`; a.click(); }; } }
@@ -1373,6 +1376,49 @@ function renderQuick(){
 }
 
 { const _rl2=renderLive; renderLive=function(){ _rl2(); renderLiveStatus(); }; const _rd=renderDash; renderDash=function(){ _rd(); renderHero(); }; }
+/* ================= LOGIN (GitHub version) ================= */
+const DATA_URL = "";   // Apps Script web-app URL (set after deployment; can also be entered on the login screen)
+function apiUrl(){ let u=DATA_URL; try{ u = u || JSON.parse(localStorage.getItem('mmwr-api')||"{}").url || ""; }catch(e){} return u; }
+function isLoggedIn(){ try{ return localStorage.getItem('mmwr-session')==="1"; }catch(e){ return false; } }
+function showLogin(reason){
+  let ov=$('loginOverlay');
+  if(!ov){ ov=document.createElement('div'); ov.id='loginOverlay'; document.body.appendChild(ov); }
+  ov.innerHTML=`<div class="loginbox">
+    <img src="${document.querySelector('.crest').src}" alt="" style="width:110px;height:110px;margin:0 auto 6px;display:block">
+    <h2 class="cond" style="margin:0;text-align:center;color:var(--gold2);text-transform:uppercase;font-size:28px">Madhura Mavericks</h2>
+    <div class="mut" style="text-align:center;margin-bottom:16px">KNPL-7 Auction War Room</div>
+    <label class="field"><span>Mobile number</span><input id="lgUser" inputmode="numeric" autocomplete="username" placeholder="10-digit mobile"></label>
+    <label class="field" style="margin-top:10px"><span>Password</span><input id="lgPass" type="password" autocomplete="current-password"></label>
+    <details style="margin-top:10px" ${apiUrl()?"":"open"}><summary class="mut" style="cursor:pointer;font-size:12px">Data service URL</summary>
+      <input id="lgUrl" value="${esc(apiUrl())}" placeholder="https://script.google.com/macros/s/…/exec" style="width:100%;margin-top:6px"></details>
+    <button class="btn" id="lgGo" style="width:100%;margin-top:14px;padding:12px;font-size:15px">Log in</button>
+    <div id="lgMsg" class="mut" style="margin-top:10px;text-align:center;min-height:18px">${reason||""}</div>
+  </div>`;
+  ov.style.display='flex';
+  const go=()=>doLogin(); $('lgGo').onclick=go; $('lgPass').onkeydown=e=>{ if(e.key==='Enter') go(); };
+  setTimeout(()=>$('lgUser').focus(),50);
+}
+async function doLogin(){
+  const user=$('lgUser').value.trim(), pass=$('lgPass').value, url=$('lgUrl').value.trim(), msg=$('lgMsg');
+  if(!user||!pass){ msg.innerHTML='<span class="warn">Enter mobile number and password.</span>'; return; }
+  if(!url){ msg.innerHTML='<span class="warn">Enter the data service URL (one time).</span>'; return; }
+  msg.textContent='Checking…'; $('lgGo').disabled=true;
+  try{
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({user,pass})});
+    const j=await r.json();
+    if(!j.ok){ msg.innerHTML=`<span class="bad">${j.error==="bad_login"?"Mobile number or password is wrong.":"Login failed ("+esc(j.error||"error")+")."}</span>`; $('lgGo').disabled=false; return; }
+    try{ localStorage.setItem('mmwr-api', JSON.stringify({url})); localStorage.setItem('mmwr-session','1'); }catch(e){}
+    const n=applyPlayers(j.players||[]);
+    $('loginOverlay').style.display='none'; document.body.classList.remove('locked');
+    toast(`Welcome — ${n} players loaded`);
+  }catch(e){ msg.innerHTML=`<span class="bad">Couldn't reach the data service. Check the URL and your connection.</span>`; }
+  $('lgGo').disabled=false;
+}
+function logout(){ try{ localStorage.removeItem('mmwr-session'); }catch(e){} document.body.classList.add('locked'); showLogin("Logged out."); }
+if(!IN_CLAUDE){
+  if(!isLoggedIn()){ document.body.classList.add('locked'); showLogin(); }
+}
+
 setupDataUI(); $('draftFile').onchange=e=>{ if(e.target.files[0]) importDraftFile(e.target.files[0]); };
 if(!IN_CLAUDE){ const b=$('syncSheetBtn'); }
 renderK6(); $('hQ').oninput=renderK6All;

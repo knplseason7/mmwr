@@ -251,7 +251,7 @@ body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{displ
   <div class="grid g2" style="margin-top:14px">
     <div class="card"><h3>Squad plan vs your vision</h3><div id="vision"></div></div>
     <div class="card"><h3>Best-fit players still available</h3><div class="scroll" style="max-height:520px"><div id="shortlist"></div></div>
-      <div class="note">Fit blends your vision: Thrissur/Ernakulam first, then CBL/NPL zone; keeper, 6–7 all-rounders, 2 bowlers, 2 hitters + 1 anchor and 2 new faces (roles from data, not self-declared); youth; seasons played with your core; MVP points per match and catches.</div></div>
+      <div class="note">Fit blends your vision: Thrissur/Ernakulam first, then CBL/NPL zone; keeper, 6 all-rounders, 2 bowlers, 2 hitters + 1 anchor and 2 new faces (roles from data, not self-declared); youth; seasons played with your core; MVP points per match and catches.</div></div>
   </div>
 </section>
 
@@ -914,7 +914,7 @@ const SHEET_ID = "1yLTJPg-2sh2xjuF8jVH6imyHxF99tVRmd8RvdStvZpw";
 const LEAGUE_COLS = ["SPL-6","SPL-7","SPL-8","CBL-4","CBL-5","CBL-6","NPL-3","NPL-4","NPL-5","KNPL-4","KNPL-5","KNPL-6","YPL-14","YPL-15","YPL-16"]; // Registrations K..BA, every 3rd col
 const ZONE = ["ERNAKULAM","IDUKKI","KANNUR","KASARAGOD","KASARGOD","KOZHIKODE","MALAPPURAM","PALAKKAD","THRISSUR","WAYANAD"];
 const ZONE_TOP = ["THRISSUR","ERNAKULAM"];
-const VISION_DEFAULT = {wk:1, ar:7, bowl:2, hit:2, anchor:1, newf:2};
+const VISION_DEFAULT = {wk:1, ar:6, bowl:2, hit:2, anchor:1, newf:2};
 const tn = s => normTeam(s).replace(/^(THE)/,"");
 const sameTeam = (a,b) => { if(!a||!b) return false; const x=tn(a), y=tn(b); return x.length>2 && (x===y || (x.length>5&&y.length>5&&(x.includes(y)||y.includes(x)))); };
 const num = v => { const n=parseFloat(String(v??"").replace(/[^\d.\-]/g,"")); return isNaN(n)?0:n; };
@@ -1259,7 +1259,7 @@ const ASK_TOOLS = [
 const ASK_SYSTEM = `You are the auction assistant for Madhura Mavericks (owner: Krishnadas M N) at the KNPL-7 Mega Auction on Super Player Auction.
 Answer ONLY from the data the tools return; call tools first for any player, team or number. Be brief and decisive: lead with the answer/recommendation, then 2-4 short bullet reasons with numbers. Use points (no ₹). If data is missing, say so.
 Rules: 14-player squads incl. owner and drafts; purse 1,00,000; Skill Rating cap 560 (+25 one-time bonus); at least 8 Rising Stars needed for the RSM opener; max bid must leave minimum base for every empty slot.
-The owner's team vision: players from CBL/NPL zone (Ernakulam, Idukki, Kannur, Kasaragod, Kozhikode, Malappuram, Palakkad, Thrissur, Wayanad), Thrissur & Ernakulam first; 1 proper wicket-keeper, 6-7 all-rounders, 2 proper bowlers, 3 batters (2 hitters, 1 anchor), 2 new faces — roles judged from data, not self-declared; youngsters with field impact; players who played with him or his drafted players.
+The owner's team vision: players from CBL/NPL zone (Ernakulam, Idukki, Kannur, Kasaragod, Kozhikode, Malappuram, Palakkad, Thrissur, Wayanad), Thrissur & Ernakulam first; 1 proper wicket-keeper, 6 all-rounders, 2 proper bowlers, 3 batters (2 hitters, 1 anchor), 2 new faces — roles judged from data, not self-declared; youngsters with field impact; players who played with him or his drafted players.
 Skill Ratings are confidential; never suggest sharing them. Never mention category quotas.`;
 async function askSend(q){
   if(!sampleApi||askBusy||!q.trim()) return;
@@ -1375,7 +1375,7 @@ function optimiseSquad(opts){
   function score(sel){
     let v=0, cost=0, rat=0; const c={...coreCnt};
     sel.forEach(x=>{ v+=x.val; cost+=x.cost; rat+=x.rating; ["wk","ar","bowl","hit","anchor","newf"].forEach(k=>{ if(x[k]) c[k]++; }); });
-    for(const k in W){ const need=k==="ar"?Math.max(6,Math.min(V.ar,7)):V[k]; v -= Math.max(0,need-c[k])*W[k]; }
+    for(const k in W){ const need=V[k]; v -= Math.max(0,need-c[k])*W[k]; }
     v -= Math.max(0,slots-sel.length)*400;
     const rem=Math.max(0,slots-sel.length);
     const feasible = cost+resC(rem)<=purseLeft && rat+resR(rem)<=ratingLeft && sel.length<=slots && limitsOK(sel);
@@ -1447,7 +1447,7 @@ function renderBestSquad(passed){
      ${chk(`Rising Stars ${k.R} (Elite ${k.RSE}/7 · Core ${k.RSC}/4)`, k.R>=8&&k.RSE<=7&&k.RSC<=4)}
    </div>
    <div class="row" style="margin-bottom:10px">
-     ${chk(`🧤 Keeper ${c.wk}/${V.wk}`, c.wk>=V.wk)} ${chk(`All-rounders ${c.ar}/6`, c.ar>=6)} ${chk(`Bowlers ${c.bowl}/${V.bowl}`, c.bowl>=V.bowl)}
+     ${chk(`🧤 Keeper ${c.wk}/${V.wk}`, c.wk>=V.wk)} ${chk(`All-rounders ${c.ar}/${V.ar}`, c.ar>=V.ar)} ${chk(`Bowlers ${c.bowl}/${V.bowl}`, c.bowl>=V.bowl)}
      ${chk(`💥 Hitters ${c.hit}/${V.hit}`, c.hit>=V.hit)} ${chk(`⚓ Anchor ${c.anchor}/${V.anchor}`, c.anchor>=V.anchor)} ${chk(`🆕 New faces ${c.newf}/${V.newf}`, c.newf>=V.newf)}
    </div>
    <div style="overflow-x:auto"><table>
@@ -1644,7 +1644,7 @@ function renderLiveStatus(){ setTimeout(()=>{ const rc=$('roundChip'); if(rc) rc
   const box=$('liveStatus'); if(!box) return;
   const t=teamState(MY), comp=(typeof mmComposition==='function'&&P().some(p=>p.stats))?mmComposition():null, V=S.cfg.vision||VISION_DEFAULT;
   const rsNeed=Math.max(0,S.cfg.rsNeed-t.g.R);
-  const needs = comp? [["🧤",comp.wk,V.wk],["AR",comp.ar,6],["Bowl",comp.bowl,V.bowl],["💥",comp.hit,V.hit],["⚓",comp.anchor,V.anchor],["🆕",comp.newf,V.newf]].filter(x=>x[1]<x[2]).map(x=>`${x[0]} ${x[2]-x[1]}`).join(" · ") : "";
+  const needs = comp? [["🧤",comp.wk,V.wk],["AR",comp.ar,V.ar],["Bowl",comp.bowl,V.bowl],["💥",comp.hit,V.hit],["⚓",comp.anchor,V.anchor],["🆕",comp.newf,V.newf]].filter(x=>x[1]<x[2]).map(x=>`${x[0]} ${x[2]-x[1]}`).join(" · ") : "";
   box.innerHTML = `<div><span>Purse left</span><b>${fmt(t.purseLeft)}</b></div>
     <div style="border-color:var(--gold)"><span>Max bid now</span><b style="color:var(--gold2)">${fmt(t.maxBid)}</b></div>
     <div><span>Rating room</span><b>${fmt(t.cap-t.rating)}</b><span style="text-transform:none">next ≤ ${fmt(t.maxRate)}</span></div>
@@ -1733,7 +1733,7 @@ const QUICK = [
      const pl=LAST_PLAN&&LAST_PLAN.sel.find(x=>x.p.id===p.id); const sp=simPay(p); const ceil=Math.max(BASE_PT[p.cat]||0, Math.min(t.maxBid, pl?pl.max:roundBidDown(m.est*(0.7+f.score/100*0.8))));
      return `**${p.name}** — fit ${f.score}/100, expected price ${fmt(sp.p50)} (likely ${fmt(sp.p25)}–${fmt(sp.p80)}).\n- Your max: **${fmt(ceil)}**${pl?' (from your squad plan)':''} — wins in ${Math.round(sp.pay.filter(v=>v<=ceil).length/SIM_N*100)}% of simulations (max bid allowed now ${fmt(t.maxBid)}).\n- Strongest rivals: ${riv.slice(0,3).map(r=>`${r.team} (${r.score})`).join(", ")||"none"}.\n- Why: ${f.why.join("; ")}.`; }],
   ["What does my squad still need?", ()=>{ const t=teamState(MY), c=mmComposition(), V=S.cfg.vision||VISION_DEFAULT;
-     return `**${t.slots} slots** left, **${fmt(t.purseLeft)}** purse, rating room **${fmt(t.cap-t.rating)}**.\n- Keeper ${c.wk}/${V.wk} · All-rounders ${c.ar}/6–7 · Bowlers ${c.bowl}/${V.bowl} · Hitters ${c.hit}/${V.hit} · Anchor ${c.anchor}/${V.anchor} · New faces ${c.newf}/${V.newf}\n- Rising Stars ${t.g.R}/${S.cfg.rsNeed}`; }],
+     return `**${t.slots} slots** left, **${fmt(t.purseLeft)}** purse, rating room **${fmt(t.cap-t.rating)}**.\n- Keeper ${c.wk}/${V.wk} · All-rounders ${c.ar}/${V.ar} · Bowlers ${c.bowl}/${V.bowl} · Hitters ${c.hit}/${V.hit} · Anchor ${c.anchor}/${V.anchor} · New faces ${c.newf}/${V.newf}\n- Rising Stars ${t.g.R}/${S.cfg.rsNeed}`; }],
   ["Who can outbid us right now?", ()=>{ const me=teamState(MY).maxBid; const r=TEAMS.filter(x=>x!==MY).map(x=>({x,t:teamState(x)})).sort((a,b)=>b.t.maxBid-a.t.maxBid);
      return `Our max bid: **${fmt(me)}**.\n`+r.slice(0,6).map(o=>`- ${o.x}: max ${fmt(o.t.maxBid)} · ${o.t.slots} slots · rating room ${fmt(o.t.cap-o.t.rating)}`).join("\n"); }],
   ...[["keepers","keeper"],["proper bowlers","Bowler"],["all-rounders","All-rounder"],["hitters","hitter"],["new faces","newFace"]].map(([l,k])=>[`Best available ${l} for us`, ()=>{

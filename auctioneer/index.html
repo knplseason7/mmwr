@@ -105,6 +105,27 @@ tr.sec svg{vertical-align:-2px}
 tr.sec-y td{color:var(--ok);background:rgba(134,211,166,.07)}
 tr.sec-n td{color:#f0b2b2;background:rgba(231,140,140,.08)}tr.leadrow.no td{opacity:1;background:rgba(231,140,140,.12)}tr.leadrow.no td:first-child{box-shadow:inset 3px 0 0 #e78c8c}tr.leadrow.no .tname{color:#f4c4c4}
 .frozen{opacity:.6;transition:opacity .25s}
+.cnum{display:inline-block;min-width:18px;padding:0 5px;border-radius:999px;background:rgba(231,140,140,.25);color:#f4cccc;font-size:11px;font-weight:700;margin-left:2px}
+.dqbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 14px;background:rgba(231,140,140,.14);border-bottom:1px solid rgba(231,140,140,.5);font-size:13px;color:#f4cccc}
+.dqbar b{color:#ffd9d9}
+[hidden]{display:none!important}
+.coc-team{background:rgba(231,140,140,.18);border:1px solid rgba(231,140,140,.5);border-radius:999px;padding:2px 10px;color:#f4cccc;font-size:12.5px;cursor:pointer}
+.cocard.act{border-color:rgba(231,140,140,.6);background:rgba(231,140,140,.07)}
+.cl{margin:4px 0 0;padding-left:18px;font-size:13px}.cl li{margin:3px 0}
+.coc{display:inline-flex;align-items:center;gap:3px;margin-left:6px;vertical-align:1px;background:transparent;border:0;padding:0 2px;cursor:pointer}
+.coc i{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.14)}
+.coc i.m1{background:#e8c47e}.coc i.m2{background:#e7a07a}.coc i.m3{background:#e78c8c}
+.coc .dq{font-size:10px;font-weight:800;color:#1c1414;background:#e78c8c;border-radius:4px;padding:0 4px;margin-left:2px}
+.tcell{display:flex;align-items:center;min-width:0}
+.cocform{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cocform label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--mut);font-weight:600}
+.cocform input{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--ink);font-size:14px}
+.warnbtn{background:#e09a9a;color:#2a1212}
+.ml{display:flex;justify-content:space-between;gap:10px;padding:6px 8px;border-radius:8px;background:var(--panel2);margin-bottom:6px;font-size:13px}
+.ml .who{font-weight:700}.ml.dq{background:rgba(231,140,140,.16);border:1px solid rgba(231,140,140,.5)}
+.cocard .mk{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:13px}
+.cocard .btnrow{display:flex;gap:6px;margin-top:10px}
+#cocDlg{width:min(560px,92vw)}
 .demobar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:7px 14px;background:rgba(187,166,230,.12);border-bottom:1px solid rgba(187,166,230,.4);font-size:13px}
 .demobar .btn{padding:4px 10px;font-size:12px}
 .views{display:flex;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px}
@@ -127,7 +148,7 @@ tr.sec-n td{color:#f0b2b2;background:rgba(231,140,140,.08)}tr.leadrow.no td{opac
 .rc.big{display:flex;flex-direction:column;gap:2px}
 .rc.big .num{font:700 34px/1 'Barlow Condensed',sans-serif;color:var(--acc);margin-bottom:4px}
 .rc.big p{margin:2px 0 0;color:#cfd6e2}
-.st{display:inline-block;padding:0 7px;line-height:20px;border-radius:6px;font-weight:700;border:1px solid transparent}
+.st{white-space:nowrap;display:inline-block;padding:0 7px;line-height:20px;border-radius:6px;font-weight:700;border:1px solid transparent}
 .st small{font-weight:500;opacity:.8;margin-left:1px}
 .st-g{background:rgba(134,211,166,.14);border-color:rgba(134,211,166,.45);color:#bfe9cf}
 .st-o{background:rgba(232,180,110,.16);border-color:rgba(232,180,110,.55);color:#f1d3a6}
@@ -178,7 +199,7 @@ dialog::backdrop{background:rgba(5,8,14,.6)}
   <img class="logo" src="../../knpl7/skill-rating/logo.png" alt="KNPL">
   <h1><small>KNPL-7 MEGA AUCTION</small>Auctioneer Desk</h1>
   <span class="auc" id="aucBadge" style="display:none"><img id="aucPic" alt=""><span><span class="l">AUCTIONEER</span><br><span class="v" id="aucName"></span></span></span>
-  <nav class="views" aria-label="Pages"><button type="button" data-view="desk" aria-current="page">Auction desk</button><button type="button" data-view="rules">Auction rules</button><button type="button" data-view="rsm">RSM match</button></nav>
+  <nav class="views" aria-label="Pages"><button type="button" data-view="desk" aria-current="page">Auction desk</button><button type="button" data-view="rules">Auction rules</button><button type="button" data-view="rsm">RSM match</button><button type="button" data-view="coc">Conduct <span id="cocCount" class="cnum" hidden></span></button></nav>
   <span class="sp"></span>
   <button type="button" id="liveStrip" style="display:none"></button>
   <div class="sbar"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
@@ -189,7 +210,8 @@ dialog::backdrop{background:rgba(5,8,14,.6)}
   <label class="ctl" title="Team data refreshes after bids pause this long">Refresh <select id="pause"><option value="3">3 s</option><option value="4" selected>4 s</option><option value="5">5 s</option></select></label>
   <button type="button" class="pill" id="link" title="Live link set-up"><span class="dot"></span><span id="linkTxt">Not linked</span></button>
 </header>
-<div id="demoBar" class="demobar" hidden><b>PREVIEW · sample teams and squads, not the real auction.</b>
+<div id="dqBar" class="dqbar" hidden></div>
+<div id="demoBar" class="demobar" hidden><b>PREVIEW · sample teams and squads, not the real auction.</b> <span class="mut">Conduct marks made in preview are not kept.</span>
   <button type="button" class="btn sec" onclick="demoBid('Vamos Vrindavan',8000)">Bid 8,000 · Vamos Vrindavan</button>
   <button type="button" class="btn sec" onclick="demoBid('Jaguars of Jhansi',8200)">Bid 8,200 · Jaguars of Jhansi (blocked)</button>
   <button type="button" class="btn sec" onclick="demoBid('Knights of Kanchi',8400)">Bid 8,400 · Knights of Kanchi</button>
@@ -265,6 +287,28 @@ dialog::backdrop{background:rgba(5,8,14,.6)}
  </div>
 </section>
 
+<section class="page" id="v-coc" hidden>
+ <div class="pg">
+  <div class="pghead"><div class="k">AUCTION TABLE · AUCTIONEER'S DECISION</div><h2>Code of Conduct marks</h2>
+   <p class="mut">The auctioneer marks a Code of Conduct violation against a team, with the reason. <b>Three marks against a team lead to action in the auction.</b> Marks are saved on this device.</p></div>
+  <div style="display:flex;gap:8px;margin:0 0 12px;flex-wrap:wrap"><button type="button" class="btn sec" id="cocCsv">Download record (CSV)</button><button type="button" class="btn sec" id="cocClear">Clear all marks</button></div>
+  <div class="grid" id="cocGrid"></div>
+ </div>
+</section>
+<dialog id="cocDlg" aria-labelledby="cocT">
+  <h3 id="cocT" style="margin:0 0 4px;color:var(--acc);font-family:'Barlow Condensed';font-size:24px"></h3>
+  <p class="mut" style="margin:0 0 10px;font-size:13px">Code of Conduct violation · 3 marks against a team lead to action in the auction</p>
+  <div id="cocList"></div>
+  <div class="cocform">
+    <label style="grid-column:1/-1">Reason<input id="cocWhy" autocomplete="off" placeholder="What happened"></label>
+  </div>
+  <div id="cocMsg" style="margin-top:8px"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap">
+    <button type="button" class="btn sec" id="cocUndo">Undo last mark</button>
+    <button type="button" class="btn warnbtn" id="cocAdd">Add violation mark</button>
+    <form method="dialog"><button class="btn sec">Close</button></form>
+  </div>
+</dialog>
 <dialog id="setup">
   <h3 style="margin-top:0;color:var(--acc);font-family:'Barlow Condensed';font-size:22px">Live link to Super Player Auction</h3>
   <ol class="mut" style="padding-left:18px">
@@ -369,7 +413,7 @@ function addToSquad(team, p, info){
   if(!sq.some(x=>x.id===id)) sq.push(p?{id:p.id,c:p.c,s:p.s}:{id,c:info&&info.cat,s:0});
 }
 function handle(m){
-  ST.on=true; ST.at=Date.now(); $('link').classList.add('on'); $('linkTxt').textContent="LIVE · Super Player Auction";
+  ST.on=true; ST.at=Date.now(); $('link').classList.add('on'); $('linkTxt').textContent="LIVE";
   if(m.type==="init"){
     ST.squads={};
     (m.teams||[]).forEach(t=>{ if(!ST.teams[t]) ST.teams[t]={rm:0,n:null}; });
@@ -387,7 +431,7 @@ function handle(m){
   renderStrip();
 }
 window.addEventListener('message',e=>{ if(e.origin!==SPA_ORIGIN||!e.data||!e.data.knplauc) return; try{handle(e.data);}catch(err){console.log(err);} });
-setInterval(()=>{ if(ST.on && Date.now()-ST.at>15000){ ST.on=false; $('link').classList.remove('on'); $('linkTxt').textContent="Link lost — click the bookmark again"; } },5000);
+setInterval(()=>{ if(ST.on && Date.now()-ST.at>15000){ ST.on=false; $('link').classList.remove('on'); $('linkTxt').textContent="Link lost"; } },5000);
 
 /* ---------- player ---------- */
 function partsHTML(p){
@@ -459,7 +503,7 @@ function renderTeams(force){
   hint.innerHTML = p? `<span class="ok"><b>${can}</b> can bid</span> · <span class="bad"><b>${rows.length-can}</b> cannot</span> · ${esc(catOf(p.c)[0])} · ${$('round').value==="1"?"Round 1 limits":"Round "+$('round').value+": only max 6 C+D"}` : "";
   const SRC={g:"st-g",o:"st-o",r:"st-r"};
   const yes=rows.filter(r=>r.ok), no=rows.filter(r=>!r.ok);
-  const row=r=>`<tr class="${normTeam(r.t)===lead&&lead?'leadrow':''} ${r.ok?'':'no'}"><td><div class="tname" title="${esc(r.t)}">${esc(r.t)}</div></td><td class="n">${r.n}/${RULES.squad}</td><td class="n"><span class="st ${SRC[r.ptSt]}" title="Points left ${fmt(r.purse)} minus ${fmt(RULES.reserve)} for each other empty place">${fmt(Math.max(0,r.maxBid))}</span></td><td class="n"><span class="st ${SRC[r.catInfo.st]}" title="${esc(r.catInfo.all)}">${esc(r.catInfo.txt)}</span></td><td class="n"><span class="st ${SRC[r.srSt]}" title="Now ${r.rat}. With this player and ~${AVG_RSC} for each other empty place: ${Math.round(r.after)}">${r.rat}<small>/${RULES.cap}${r.srNeedsBonus?" +25":""}</small></span></td><td>${r.ok?'<span class="yes">Yes</span>':`<span class="nob">${esc(r.why)}</span>`}</td></tr>`;
+  const row=r=>`<tr class="${normTeam(r.t)===lead&&lead?'leadrow':''} ${r.ok?'':'no'}"><td><div class="tcell"><div class="tname" title="${esc(r.t)}">${esc(r.t)}</div>${cocBadge(r.t)}</div></td><td class="n">${r.n}/${RULES.squad}</td><td class="n"><span class="st ${SRC[r.ptSt]}" title="Points left ${fmt(r.purse)} minus ${fmt(RULES.reserve)} for each other empty place">${fmt(Math.max(0,r.maxBid))}</span></td><td class="n"><span class="st ${SRC[r.catInfo.st]}" title="${esc(r.catInfo.all)}">${esc(r.catInfo.txt)}</span></td><td class="n"><span class="st ${SRC[r.srSt]}" title="Now ${r.rat}. With this player and ~${AVG_RSC} for each other empty place: ${Math.round(r.after)}">${r.rat}<small>/${RULES.cap}${r.srNeedsBonus?" +25":""}</small></span></td><td>${r.ok?'<span class="yes">Yes</span>':`<span class="nob">${esc(r.why)}</span>`}</td></tr>`;
   const head=`<tr><th>Team</th><th class="n">Squad</th><th class="n">Max bid</th><th class="n">Category</th><th class="n">SR / cap</th><th>Bid?</th></tr>`;
   const strip = no.length? `<div class="nostrip"><span class="lab" style="color:#f0b2b2">Cannot bid · warn</span>${no.map(r=>`<span title="${esc(r.t)}"><b>${esc(r.t)}</b> · ${esc(r.why)}</span>`).join("")}</div>` : (p?`<div class="nostrip ok"><span class="lab" style="color:var(--ok)">All teams can bid</span></div>`:"");
   box.innerHTML=strip+`<table>${head}
@@ -468,6 +512,41 @@ function renderTeams(force){
    <div class="legend"><span class="st st-g">Room</span><span class="st st-o">Last place / nearing</span><span class="st st-r">Full / over</span></div>
    <div class="note"><b>Category</b> shows the tightest limit for this player: Round 1 group limits (Conqueror 1 · Dominator 3, Apex 1 · Rising Star 10, Elite 7, Core 4) and, in every round, max 6 Conquerors + Dominators. <b>Max bid</b> = points left minus ${fmt(RULES.reserve)} for each other empty place (use it as the team's limit on Super Player Auction). <b>Skill Rating</b> = squad total / ${RULES.cap}; colour adds this player and ~${AVG_RSC} for each other empty place (+25 = only with the one-time bonus).</div>`;
 }
+
+/* ---------- Code of Conduct marks against teams (saved on this device) ---------- */
+const K7=["Ayodhya Warriors","Devils of Chithrakoot","Gandhara Giants","Guardians of Kamboja","Jaguars of Jhansi","Kaaliyanz of Dwaraka","Kalinga United","Knights of Kanchi","Kombans of Pataleeputhra","Kurukshetra Yodhas","Madhura Mavericks","Mighty Midhilas","Panchaala Panthers","Spartans of Nalanda","Vamos Vrindavan","Varahas of Vijayanagara"];
+let COC=(()=>{ try{ const c=JSON.parse(localStorage.getItem('knplCoC2')||'{}'); return c&&typeof c==='object'?c:{}; }catch(e){ return {}; } })();
+const cocKey=t=>K7.find(x=>normTeam(x)===normTeam(t))||t;
+const cocN=t=>(COC[cocKey(t)]||[]).length;
+let COC_REAL=null;
+function cocSave(){ if(!DEMO){ try{ localStorage.setItem('knplCoC2',JSON.stringify(COC)); }catch(e){} } renderCoc(); }
+function cocBadge(t){ const n=Math.min(3,cocN(t));
+  return `<button type="button" class="coc" data-coc="${esc(cocKey(t))}" title="Code of Conduct marks: ${cocN(t)}/3 · click to mark">${[1,2,3].map(i=>`<i class="${i<=n?'m'+n:''}"></i>`).join("")}${cocN(t)>=3?'<span class="dq">ACTION</span>':''}</button>`; }
+const cocAllTeams=()=>K7.concat(Object.keys(COC).filter(t=>!K7.includes(t)));
+let COC_T=null;
+function openCoc(t){ COC_T=cocKey(t); $('cocT').textContent=COC_T; $('cocWhy').value=''; $('cocMsg').innerHTML=''; cocListRender(); $('cocDlg').showModal(); setTimeout(()=>$('cocWhy').focus(),50); }
+function cocListRender(){ const l=COC[COC_T]||[];
+  $('cocList').innerHTML = l.length? `<div class="ml ${l.length>=3?'dq':''}"><span><b>${l.length}/3 marks</b>${l.length>=3?' · <b style="color:#f4cccc">Action due in the auction</b>':''}<ol style="margin:6px 0 0;padding-left:18px">${l.map(x=>`<li>${esc(x.why)} <span class="mut" style="font-size:12px">· ${new Date(x.at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span></li>`).join("")}</ol></span></div>` : '<div class="mut" style="margin-bottom:8px">No marks for this team.</div>'; }
+$('cocAdd').onclick=()=>{ const why=$('cocWhy').value.trim(); if(!why){ $('cocMsg').innerHTML='<span class="warn">Enter the reason for the mark.</span>'; $('cocWhy').focus(); return; }
+  (COC[COC_T]||(COC[COC_T]=[])).push({why, at:Date.now()}); cocSave(); $('cocWhy').value='';
+  const n=cocN(COC_T);
+  $('cocMsg').innerHTML = n>=3? `<div class="vb bad"><span><b>${esc(COC_T)} has ${n} Code of Conduct marks · action due in the auction.</b></span></div>` : `<span class="warn">Mark ${n} of 3 added for ${esc(COC_T)}.</span>`;
+  cocListRender(); };
+$('cocWhy').addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); $('cocAdd').click(); } });
+$('cocUndo').onclick=()=>{ const l=COC[COC_T]||[]; if(!l.length) return; const x=l.pop(); if(!l.length) delete COC[COC_T]; cocSave(); $('cocMsg').innerHTML=`<span class="mut">Removed the last mark (${esc(x.why)}).</span>`; cocListRender(); };
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-coc]'); if(b){ e.stopPropagation(); openCoc(b.dataset.coc); } });
+function renderCoc(){
+  const act=cocAllTeams().filter(t=>cocN(t)>=3), total=Object.values(COC).reduce((a,l)=>a+l.length,0);
+  $('cocCount').hidden=!total; $('cocCount').textContent=total;
+  $('dqBar').hidden=!act.length; $('dqBar').innerHTML=act.length? `<span class="lab" style="color:#f4cccc">Code of Conduct · 3 marks · action due</span>${act.map(t=>`<button type="button" class="coc-team" data-coc="${esc(t)}"><b>${esc(t)}</b> · ${cocN(t)} marks</button>`).join('')}`:'';
+  $('cocGrid').innerHTML=cocAllTeams().map(t=>{ const l=COC[t]||[];
+    return `<div class="rc cocard ${l.length>=3?'act':''}"><h4 style="display:flex;justify-content:space-between;align-items:center;gap:8px">${esc(t)}<span class="st ${l.length>=3?'st-r':l.length?'st-o':'st-g'}">${l.length>=3?'Action due · ':''}${l.length}/3</span></h4>${l.length? `<ol class="cl">${l.map(x=>`<li>${esc(x.why)} <span class="mut" style="font-size:12px">· ${new Date(x.at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</span></li>`).join("")}</ol>` : '<div class="mut" style="font-size:13px">No marks</div>'}
+      <div class="btnrow"><button type="button" class="btn sec" data-coc="${esc(t)}">Mark violation</button></div></div>`; }).join("");
+  if(Object.keys(ST.teams).length && !ST.bidding) renderTeams(true);
+}
+$('cocCsv').onclick=()=>{ const rows=[["Team","Mark no.","Time","Reason"]]; cocAllTeams().forEach(t=>(COC[t]||[]).forEach((x,i)=>rows.push([t,i+1,new Date(x.at).toLocaleString('en-IN'),x.why])));
+  const csv=rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\n"); const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='KNPL7-code-of-conduct-marks.csv'; a.click(); };
+$('cocClear').onclick=()=>{ if(!Object.keys(COC).length) return; if(confirm('Clear all Code of Conduct marks on this device? This cannot be undone.')){ COC={}; cocSave(); } };
 
 /* ---------- demo preview (sample data, never the real auction) ---------- */
 let DEMO=null;
@@ -481,14 +560,14 @@ function startDemo(){
   const players=[], T={};
   TEAMS.forEach((t,i)=>{ plans[i].forEach(c=>{ const p=take(c); if(p) players.push({pcode:'d'+p.id,name:p.n,reg:p.id,team:t}); }); T[t]={rm:purse[i],n:plans[i].length}; });
   const pl=pool.DA[3]||DATA[10];
-  DEMO={T,pl};
+  DEMO={T,pl}; COC_REAL=COC; COC={}; renderCoc();
   handle({knplauc:1,type:'init',teams:TEAMS,players});
   handle({knplauc:1,type:'live',player:{pcode:'demo1',name:pl.n,reg:pl.id},bid:0,bidteam:'',teams:T});
-  ST.on=false; $('link').classList.remove('on'); $('linkTxt').textContent="DEMO · sample teams";
+  ST.on=false; $('link').classList.remove('on'); $('linkTxt').textContent="DEMO";
   $('demoBar').hidden=false;
 }
-function demoBid(team, amt){ if(!DEMO) return; handle({knplauc:1,type:'live',player:{pcode:'demo1',name:DEMO.pl.n,reg:DEMO.pl.id},bid:amt,bidteam:team,teams:DEMO.T}); ST.on=false; $('linkTxt').textContent="DEMO · sample teams"; }
-function endDemo(){ DEMO=null; Object.assign(ST,{log:[],view:null,cur:null,curInfo:null,bid:0,bidteam:"",teams:{},squads:{},prev:null,bidding:false}); clearTimeout(ST.timer); $('demoBar').hidden=true; $('linkTxt').textContent="Not linked"; renderPlayer(null); renderTeams(); renderStrip(); }
+function demoBid(team, amt){ if(!DEMO) return; handle({knplauc:1,type:'live',player:{pcode:'demo1',name:DEMO.pl.n,reg:DEMO.pl.id},bid:amt,bidteam:team,teams:DEMO.T}); ST.on=false; $('linkTxt').textContent="DEMO"; }
+function endDemo(){ DEMO=null; if(COC_REAL){ COC=COC_REAL; COC_REAL=null; renderCoc(); } Object.assign(ST,{log:[],view:null,cur:null,curInfo:null,bid:0,bidteam:"",teams:{},squads:{},prev:null,bidding:false}); clearTimeout(ST.timer); $('demoBar').hidden=true; $('linkTxt').textContent="Not linked"; renderPlayer(null); renderTeams(); renderStrip(); }
 
 /* ---------- search ---------- */
 let SUG=[], SUGI=-1;
@@ -525,7 +604,7 @@ $('liveStrip').onclick=()=>{ if(ST.curInfo){ renderPlayer(ST.cur, ST.curInfo); r
 $('link').onclick=()=>$('setup').showModal();
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{ const v=b.dataset.view;
   document.querySelectorAll('[data-view]').forEach(x=>x.toggleAttribute('aria-current',x===b)); document.querySelectorAll('[data-view]').forEach(x=>{ if(x===b) x.setAttribute('aria-current','page'); });
-  document.querySelector('main').hidden = v!=='desk'; $('v-rules').hidden = v!=='rules'; $('v-rsm').hidden = v!=='rsm'; });
+  document.querySelector('main').hidden = v!=='desk'; $('v-rules').hidden = v!=='rules'; $('v-rsm').hidden = v!=='rsm'; $('v-coc').hidden = v!=='coc'; });
 /* ---------- bookmark (runs on the Super Player Auction screen) ---------- */
 const BM=function(){
   var DESK='https://knplseason7.github.io';
@@ -554,7 +633,7 @@ fetch('data.json',{cache:'no-cache'}).then(r=>r.json()).then(j=>{
   const r=DATA.filter(p=>p.c==="Rising Star Core").map(p=>p.s); if(r.length) AVG_RSC=Math.round(r.reduce((a,b)=>a+b,0)/r.length);
   AUC=BYID[AUC_ID]||null;
   if(AUC){ $('aucName').textContent=AUC.n; if(AUC.ph) $('aucPic').src='data:image/jpeg;base64,'+AUC.ph; $('aucBadge').style.display=''; }
-  renderPlayer(null); renderTeams();
+  renderPlayer(null); renderTeams(); renderCoc();
   if(location.hash.length>1){ pick(matches(decodeURIComponent(location.hash.slice(1)))[0]); }
 }).catch(()=>{ $('player').innerHTML='<div class="empty">Could not load player data. Check the internet connection and reload.</div>'; });
 </script>

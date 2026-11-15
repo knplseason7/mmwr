@@ -62,6 +62,15 @@ details{margin-top:12px}summary{cursor:pointer;font-weight:600}
 .hero h2{margin:4px 0 6px;font:800 52px/1 'Barlow Condensed',sans-serif}
 .hero p{margin:6px 0;color:var(--mut)}
 .selfnote{margin:10px 0 0;padding:8px 12px;border-radius:10px;background:rgba(255,181,71,.14);border:1px solid rgba(255,181,71,.5);font-weight:600}
+
+.sbar{position:relative;display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 8px 8px 14px;margin-bottom:12px;color:var(--mut)}
+.sbar input{flex:1;background:transparent;border:0;outline:0;font-size:17px;color:var(--ink);min-width:0;width:auto}
+.sbar:focus-within{border-color:var(--gold)}
+.sug{position:absolute;left:0;right:0;top:calc(100% + 6px);background:#0d1d40;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.45);z-index:20;display:none;max-height:440px;overflow:auto}
+.sug button{display:flex;width:100%;gap:12px;align-items:center;background:transparent;color:var(--ink);border:0;border-bottom:1px solid rgba(255,255,255,.06);border-radius:0;padding:8px 12px;text-align:left;font-weight:500}
+.sug button:hover,.sug button.act{background:var(--panel2)}
+.sug img,.sug .ni{width:36px;height:44px;border-radius:6px;object-fit:cover;background:var(--panel2);flex:none}
+.sug .m{font-size:12px;color:var(--mut)}
 h3{margin:0 0 8px;font:700 20px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;color:var(--gold)}
 </style>
 </head>
@@ -75,11 +84,13 @@ h3{margin:0 0 8px;font:700 20px 'Barlow Condensed',sans-serif;letter-spacing:.6p
   <span class="pill" id="link"><span class="dot"></span><span id="linkTxt">Not linked</span></span>
   <label class="mut">Round <select id="round"><option value="1">1</option><option value="2">2</option></select></label>
   <label class="mut">Teams update after <select id="pause"><option>3</option><option selected>4</option><option>5</option></select> s pause</label>
-  <input type="search" id="q" placeholder="Search name or Reg No (e.g. 28)" list="names">
-  <datalist id="names"></datalist>
 </header>
 <main>
   <section>
+    <div class="sbar"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input type="search" id="q" autocomplete="off" placeholder="Find a player: type a name or Reg No (e.g. 28)" aria-label="Find a player">
+      <button type="button" id="qGo">Show</button>
+      <div class="sug" id="sug" role="listbox"></div></div>
     <div class="card" id="player"><div class="empty">Loading players…</div></div>
   </section>
   <section>
@@ -234,14 +245,32 @@ window.addEventListener('message',e=>{ if(e.origin!==SPA_ORIGIN||!e.data||!e.dat
 setInterval(()=>{ if(ST.on && Date.now()-ST.at>15000){ ST.on=false; $('link').classList.remove('on'); $('linkTxt').textContent="Link lost — click the bookmark again"; } },5000);
 
 /* ---------- search ---------- */
-function search(){
-  const v=$('q').value.trim(); if(!v) return;
-  const id=v.match(/^(?:KNPL7-?)?0*(\d{1,4})\b/i);
-  let p= id? BYID["KNPL7-"+id[1].padStart(4,"0")] : null;
-  if(!p){ const n=norm(v.replace(/^KNPL7-\d+\s*·\s*/,"")); p=DATA.find(x=>norm(x.n)===n)||DATA.find(x=>norm(x.n).includes(n)); }
-  if(p){ renderPlayer(p); renderTeams(true); renderStrip(); }
+let SUG=[], SUGI=-1;
+function matches(v){
+  v=v.trim(); if(!v) return [];
+  const num=v.match(/^(?:KNPL7-?)?0*(\d{1,4})$/i), n=norm(v);
+  const out=[];
+  if(num){ const p=BYID["KNPL7-"+num[1].padStart(4,"0")]; if(p) out.push(p); }
+  DATA.forEach(p=>{ if(out.includes(p)) return; const pn=norm(p.n); if(n && (pn.startsWith(n)||pn.includes(n)||norm(p.d).startsWith(n))) out.push(p); });
+  return out.sort((a,b)=>(norm(b.n).startsWith(n)-norm(a.n).startsWith(n))).slice(0,8);
 }
-$('q').addEventListener('change',search); $('q').addEventListener('keydown',e=>{ if(e.key==="Enter") search(); });
+function showSug(){
+  const box=$('sug'); SUG=matches($('q').value); SUGI=SUG.length?0:-1;
+  if(!$('q').value.trim()){ box.style.display='none'; return; }
+  box.innerHTML = SUG.length? SUG.map((p,i)=>`<button type="button" role="option" data-i="${i}" class="${i===0?'act':''}">${p.ph?`<img alt="" src="data:image/jpeg;base64,${p.ph}">`:'<span class="ni"></span>'}<span><b>${esc(p.n)}</b><div class="m">${esc(p.id)} · ${esc(p.d)} · ${esc(p.c)} · SR ${p.s}</div></span></button>`).join("") : '<div class="mut" style="padding:12px">No player found</div>';
+  box.style.display='block';
+}
+function pick(p){ if(!p) return; $('sug').style.display='none'; $('q').value=''; renderPlayer(p); renderTeams(true); renderStrip(); window.scrollTo({top:0,behavior:'smooth'}); }
+function search(){ const m=SUG.length?SUG:matches($('q').value); pick(m[Math.max(0,SUGI)]); }
+$('q').addEventListener('input',showSug);
+$('q').addEventListener('keydown',e=>{
+  if(e.key==="ArrowDown"||e.key==="ArrowUp"){ if(!SUG.length) return; e.preventDefault(); SUGI=(SUGI+(e.key==="ArrowDown"?1:-1)+SUG.length)%SUG.length; [...$('sug').querySelectorAll('button')].forEach((b,i)=>b.classList.toggle('act',i===SUGI)); }
+  else if(e.key==="Enter"){ e.preventDefault(); search(); }
+  else if(e.key==="Escape"){ $('sug').style.display='none'; }
+});
+$('sug').addEventListener('click',e=>{ const b=e.target.closest('button[data-i]'); if(b) pick(SUG[+b.dataset.i]); });
+$('qGo').onclick=search;
+document.addEventListener('click',e=>{ if(!e.target.closest('.sbar')) $('sug').style.display='none'; });
 $('round').onchange=()=>renderTeams(true);
 function renderStrip(){ const b=$('liveStrip'); if(!ST.curInfo || ST.view===ST.cur){ b.style.display='none'; return; }
   b.style.display=''; b.textContent=`● On the block: ${ST.cur?ST.cur.n:(ST.curInfo.name||'')} · ${ST.bid?fmt(ST.bid)+' '+ST.bidteam:'no bid'} — show`; }
@@ -274,9 +303,8 @@ fetch('data.json',{cache:'no-cache'}).then(r=>r.json()).then(j=>{
   const r=DATA.filter(p=>p.c==="Rising Star Core").map(p=>p.s); if(r.length) AVG_RSC=Math.round(r.reduce((a,b)=>a+b,0)/r.length);
   AUC=BYID[AUC_ID]||null;
   if(AUC){ $('aucName').textContent=AUC.n; if(AUC.ph) $('aucPic').src='data:image/jpeg;base64,'+AUC.ph; $('aucBadge').style.display=''; }
-  $('names').innerHTML=DATA.map(p=>`<option value="${esc(p.id.slice(6)+' · '+p.n)}">`).join("");
   renderPlayer(null); renderTeams();
-  if(location.hash.length>1){ $('q').value=decodeURIComponent(location.hash.slice(1)); search(); }
+  if(location.hash.length>1){ pick(matches(decodeURIComponent(location.hash.slice(1)))[0]); }
 }).catch(()=>{ $('player').innerHTML='<div class="empty">Could not load player data. Check the internet connection and reload.</div>'; });
 </script>
 </body>

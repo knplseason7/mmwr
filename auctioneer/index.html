@@ -105,6 +105,8 @@ tr.sec svg{vertical-align:-2px}
 tr.sec-y td{color:var(--ok);background:rgba(134,211,166,.07)}
 tr.sec-n td{color:#f0b2b2;background:rgba(231,140,140,.08)}tr.leadrow.no td{opacity:1;background:rgba(231,140,140,.12)}tr.leadrow.no td:first-child{box-shadow:inset 3px 0 0 #e78c8c}tr.leadrow.no .tname{color:#f4c4c4}
 .frozen{opacity:.6;transition:opacity .25s}
+.demobar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:7px 14px;background:rgba(187,166,230,.12);border-bottom:1px solid rgba(187,166,230,.4);font-size:13px}
+.demobar .btn{padding:4px 10px;font-size:12px}
 .views{display:flex;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:3px}
 .views button{background:transparent;border:0;border-radius:7px;padding:5px 9px;white-space:nowrap;color:var(--mut);font-weight:600;cursor:pointer;font-size:13px}
 .views button[aria-current=page]{background:var(--panel2);color:var(--ink);box-shadow:inset 0 -2px 0 var(--acc)}
@@ -187,6 +189,11 @@ dialog::backdrop{background:rgba(5,8,14,.6)}
   <label class="ctl" title="Team data refreshes after bids pause this long">Refresh <select id="pause"><option value="3">3 s</option><option value="4" selected>4 s</option><option value="5">5 s</option></select></label>
   <button type="button" class="pill" id="link" title="Live link set-up"><span class="dot"></span><span id="linkTxt">Not linked</span></button>
 </header>
+<div id="demoBar" class="demobar" hidden><b>PREVIEW · sample teams and squads, not the real auction.</b>
+  <button type="button" class="btn sec" onclick="demoBid('Vamos Vrindavan',8000)">Bid 8,000 · Vamos Vrindavan</button>
+  <button type="button" class="btn sec" onclick="demoBid('Jaguars of Jhansi',8200)">Bid 8,200 · Jaguars of Jhansi (blocked)</button>
+  <button type="button" class="btn sec" onclick="demoBid('Knights of Kanchi',8400)">Bid 8,400 · Knights of Kanchi</button>
+  <button type="button" class="btn" onclick="endDemo()">End preview</button></div>
 <main>
   <div class="col"><div class="card pc" id="player"><div class="empty">Loading players…</div></div></div>
   <div class="col"><div class="card tcard"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><h3>Teams</h3><span id="teamsHint" class="mut" style="font-size:12px"></span></div><div class="tbody" id="teams"></div></div></div>
@@ -445,7 +452,7 @@ window.addEventListener('resize',fitChips);
 /* ---------- teams ---------- */
 function renderTeams(force){
   const box=$('teams'), hint=$('teamsHint');
-  if(!Object.keys(ST.teams).length){ box.innerHTML='<div class="empty">Team points and who can bid appear here once the live link is on.<br><br><button type="button" class="btn sec" onclick="document.getElementById(\'setup\').showModal()">How to link</button></div>'; hint.textContent=""; return; }
+  if(!Object.keys(ST.teams).length){ box.innerHTML='<div class="empty">Team points and who can bid appear here once the live link is on.<br><br><button type="button" class="btn" onclick="startDemo()">Preview with sample teams</button> <button type="button" class="btn sec" onclick="document.getElementById(\'setup\').showModal()">How to link</button></div>'; hint.textContent=""; return; }
   if(ST.bidding && !force){ box.classList.add('frozen'); hint.innerHTML=`<span class="warn">Bidding… refreshes after a ${$('pause').value} s pause</span>`; return; }
   box.classList.remove('frozen');
   const rows=teamRows(), lead=normTeam(ST.bidteam), p=ST.view, can=rows.filter(r=>r.ok).length;
@@ -461,6 +468,27 @@ function renderTeams(force){
    <div class="legend"><span class="st st-g">Room</span><span class="st st-o">Last place / nearing</span><span class="st st-r">Full / over</span></div>
    <div class="note"><b>Category</b> shows the tightest limit for this player: Round 1 group limits (Conqueror 1 · Dominator 3, Apex 1 · Rising Star 10, Elite 7, Core 4) and, in every round, max 6 Conquerors + Dominators. <b>Max bid</b> = points left minus ${fmt(RULES.reserve)} for each other empty place (use it as the team's limit on Super Player Auction). <b>Skill Rating</b> = squad total / ${RULES.cap}; colour adds this player and ~${AVG_RSC} for each other empty place (+25 = only with the one-time bonus).</div>`;
 }
+
+/* ---------- demo preview (sample data, never the real auction) ---------- */
+let DEMO=null;
+function startDemo(){
+  const TEAMS=["Kombans of Pataleeputhra","Madhura Mavericks","Mighty Midhilas","Kalinga United","Varahas of Vijayanagara","Kaaliyanz of Dwaraka","Guardians of Kamboja","Ayodhya Warriors","Jaguars of Jhansi","Gandhara Giants","Devils of Chithrakoot","Kurukshetra Yodhas","Vamos Vrindavan","Knights of Kanchi","Spartans of Nalanda","Panchaala Panthers"];
+  const by=c=>DATA.filter(p=>p.c===c);
+  const pool={CV:by("Conqueror Vanguard"),CC:by("Conqueror Core"),DA:by("Dominator Apex"),DC:by("Dominator Core"),RSE:by("Rising Star Elite"),RSC:by("Rising Star Core")};
+  const take=c=>pool[c].shift();
+  const plans=[["CV","DC","RSE"],["CC","DA","DC","DC","RSE","RSE","RSE","RSC"],["DC","RSE"],["CV","DA","DC","DC","DC","RSE"],["CC","DC","RSE","RSE"],["DA","RSE","RSC"],["CV","DC"],["DC","DC","RSE","RSE","RSE","RSE","RSE","RSE","RSE","RSC"],["CC","DA","DC","RSE","RSE","RSE","RSE","RSE","RSE","RSE","RSC"],["DC","RSE","RSC"],["CV","RSE"],["DA","DC","RSE","RSE","RSC"],["RSE","RSC"],["CC","DC","DC","RSE","RSE"],["DC","DC","RSE"],["CV","DA","RSE","RSE","RSE"]];
+  const purse=[61000,30500,72000,26500,48000,70000,62000,24000,21000,69000,58000,40000,80000,36000,66000,33000];
+  const players=[], T={};
+  TEAMS.forEach((t,i)=>{ plans[i].forEach(c=>{ const p=take(c); if(p) players.push({pcode:'d'+p.id,name:p.n,reg:p.id,team:t}); }); T[t]={rm:purse[i],n:plans[i].length}; });
+  const pl=pool.DA[3]||DATA[10];
+  DEMO={T,pl};
+  handle({knplauc:1,type:'init',teams:TEAMS,players});
+  handle({knplauc:1,type:'live',player:{pcode:'demo1',name:pl.n,reg:pl.id},bid:0,bidteam:'',teams:T});
+  ST.on=false; $('link').classList.remove('on'); $('linkTxt').textContent="DEMO · sample teams";
+  $('demoBar').hidden=false;
+}
+function demoBid(team, amt){ if(!DEMO) return; handle({knplauc:1,type:'live',player:{pcode:'demo1',name:DEMO.pl.n,reg:DEMO.pl.id},bid:amt,bidteam:team,teams:DEMO.T}); ST.on=false; $('linkTxt').textContent="DEMO · sample teams"; }
+function endDemo(){ DEMO=null; Object.assign(ST,{log:[],view:null,cur:null,curInfo:null,bid:0,bidteam:"",teams:{},squads:{},prev:null,bidding:false}); clearTimeout(ST.timer); $('demoBar').hidden=true; $('linkTxt').textContent="Not linked"; renderPlayer(null); renderTeams(); renderStrip(); }
 
 /* ---------- search ---------- */
 let SUG=[], SUGI=-1;

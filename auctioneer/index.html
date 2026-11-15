@@ -51,6 +51,17 @@ tr.no td{opacity:.45}
 details{margin-top:12px}summary{cursor:pointer;font-weight:600}
 .empty{padding:40px 10px;text-align:center;color:var(--mut)}
 .bm{display:inline-block;text-decoration:none}
+
+.auc{display:flex;align-items:center;gap:10px;padding:4px 14px 4px 4px;border-radius:999px;background:linear-gradient(90deg,rgba(255,181,71,.22),rgba(255,181,71,.05));border:1px solid rgba(255,181,71,.55)}
+.auc img{width:40px;height:40px;border-radius:50%;object-fit:cover;object-position:top;box-shadow:0 0 0 2px var(--gold);background:var(--panel2)}
+.auc .l{font-size:10px;letter-spacing:1.6px;font-weight:700;color:var(--gold);line-height:1}
+.auc .v{font:700 18px/1.1 'Barlow Condensed',sans-serif;letter-spacing:.4px}
+.hero{display:flex;gap:26px;align-items:center;padding:26px 10px}
+.hero .pic{width:170px;height:210px;border-radius:18px;object-fit:cover;object-position:top;box-shadow:0 0 0 3px var(--gold),0 0 40px rgba(255,181,71,.35);flex:none;background:var(--panel2)}
+.hero .k{font-size:12px;letter-spacing:3px;font-weight:700;color:var(--gold)}
+.hero h2{margin:4px 0 6px;font:800 52px/1 'Barlow Condensed',sans-serif}
+.hero p{margin:6px 0;color:var(--mut)}
+.selfnote{margin:10px 0 0;padding:8px 12px;border-radius:10px;background:rgba(255,181,71,.14);border:1px solid rgba(255,181,71,.5);font-weight:600}
 h3{margin:0 0 8px;font:700 20px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;color:var(--gold)}
 </style>
 </head>
@@ -59,6 +70,7 @@ h3{margin:0 0 8px;font:700 20px 'Barlow Condensed',sans-serif;letter-spacing:.6p
   <img src="../../knpl7/skill-rating/logo.png" alt="KNPL">
   <h1>KNPL-7 MEGA AUCTION · AUCTIONEER DESK</h1>
   <span class="sp"></span>
+  <span class="auc" id="aucBadge" style="display:none"><img id="aucPic" alt=""><span><span class="l">AUCTIONEER</span><br><span class="v" id="aucName"></span></span></span>
   <button class="sec" id="liveStrip" style="display:none"></button>
   <span class="pill" id="link"><span class="dot"></span><span id="linkTxt">Not linked</span></span>
   <label class="mut">Round <select id="round"><option value="1">1</option><option value="2">2</option></select></label>
@@ -92,7 +104,7 @@ const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&g
 const fmt=n=>(+n||0).toLocaleString('en-IN');
 const norm=s=>String(s||"").toUpperCase().replace(/\(.*?\)/g,"").replace(/[^A-Z]/g,"");
 const normTeam=s=>norm(s).replace(/^THE/,"").replace(/MITHILAS/,"MIDHILAS").replace(/CHITRAKOOT/,"CHITHRAKOOT");
-let DATA=[], BYID={}, AVG_RSC=19;
+let DATA=[], BYID={}, AVG_RSC=19, AUC=null; const AUC_ID='KNPL7-0224', AUC_NAME='Ajaya Ghosh';
 const ST={view:null,on:false,at:0,cur:null,curInfo:null,bid:0,bidteam:"",teams:{},squads:{},prev:null,bidding:false,timer:null,lastBidAt:0,frozenTeams:null};
 
 function step(v){ return v<2000?100: v<8000?200: v<10000?400:500; }
@@ -109,6 +121,11 @@ function catOf(c){ return CAT[c]||[c||"–","",""]; }
 /* ---------- player card ---------- */
 function renderPlayer(p, info){
   const box=$('player');
+  if(!p && !info && AUC){ box.innerHTML=`<div class="hero">${AUC.ph?`<img class="pic" alt="" src="data:image/jpeg;base64,${AUC.ph}">`:""}<div>
+     <div class="k">KNPL-7 MEGA AUCTION · AUCTIONEER</div><h2>Welcome, ${esc(AUC_NAME)}</h2>
+     <p>12 December 2026 · 8:00 AM · Chola Farm Resorts, Karukutty</p>
+     <p>Every player who comes on the block appears here with his Skill Rating, key numbers and highlights. Team purses and who can bid refresh whenever bidding pauses.</p>
+     <p class="mut" style="font-size:13px">Waiting for the first player… or search any player above.</p></div></div>`; return; }
   if(!p){ box.innerHTML = info? `<div class="empty"><div class="nm">${esc(info.name||"Unknown player")}</div>Not found in the KNPL-7 Skill Rating list. Search by name or Reg No.</div>` : `<div class="empty">Waiting for the next player… or search above.</div>`; return; }
   const [code,grp,col]=catOf(p.c), s=p.st;
   const ph=p.ph?`<img class="ph" alt="" src="data:image/jpeg;base64,${p.ph}">`:`<div class="ph"></div>`;
@@ -126,6 +143,7 @@ function renderPlayer(p, info){
      <div class="nm">${esc(p.n)}</div>
      <div class="chips"><span class="chip" style="background:${col}">${esc(p.c)}</span><span class="sr">${p.s}<span class="mut" style="font-size:16px"> / 100 Skill Rating</span></span><span class="pill">${esc(p.role)}</span>${p.f?'<span class="pill" style="color:var(--teal);border-color:var(--teal)">NPL-5</span>':""}</div>
    </div></div>
+   ${AUC&&p===AUC?`<div class="selfnote">Our auctioneer is on the block — over to the panel for this one!</div>`:""}
    ${bidHTML}
    <div class="lab">Last 3 seasons · KNPL + qualifying leagues</div>
    <div class="stats">
@@ -254,6 +272,8 @@ $('bm').onclick=e=>{ e.preventDefault(); alert('Drag this button to your bookmar
 fetch('data.json',{cache:'no-cache'}).then(r=>r.json()).then(j=>{
   DATA=j.players; DATA.forEach(p=>BYID[p.id]=p);
   const r=DATA.filter(p=>p.c==="Rising Star Core").map(p=>p.s); if(r.length) AVG_RSC=Math.round(r.reduce((a,b)=>a+b,0)/r.length);
+  AUC=BYID[AUC_ID]||null;
+  if(AUC){ $('aucName').textContent=AUC.n; if(AUC.ph) $('aucPic').src='data:image/jpeg;base64,'+AUC.ph; $('aucBadge').style.display=''; }
   $('names').innerHTML=DATA.map(p=>`<option value="${esc(p.id.slice(6)+' · '+p.n)}">`).join("");
   renderPlayer(null); renderTeams();
   if(location.hash.length>1){ $('q').value=decodeURIComponent(location.hash.slice(1)); search(); }

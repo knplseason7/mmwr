@@ -5,159 +5,179 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>KNPL-7 Auctioneer Desk</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#081530;--panel:#10234a;--panel2:#16305f;--line:#24427a;--ink:#fff;--mut:#a9b8d6;--gold:#ffb547;--green:#3fd08a;--red:#ff6b6b;--amber:#ffc24a;--teal:#3fd0b6}
+:root{--bg:#151c29;--panel:#1d2637;--panel2:#243045;--line:#323f57;--ink:#e6eaf1;--mut:#9ba7bc;--acc:#e2b86b;--acc2:#f0cf94;--ok:#86d3a6;--bad:#e79a9a;--warn:#e8c47e;--blue:#93b6e6;--vio:#bba6e6;--teal:#86d2c4}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,sans-serif}
-header{display:flex;align-items:center;gap:14px;padding:10px 18px;background:#06102a;border-bottom:1px solid var(--line);flex-wrap:wrap}
-header img{width:46px;height:46px;border-radius:50%;background:#fff}
-header h1{margin:0;font:800 26px 'Barlow Condensed',sans-serif;letter-spacing:.5px}@media(max-width:1400px){header h1{font-size:22px}}
-.sp{flex:1}
-.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-weight:600;font-size:13px}
-.dot{width:10px;height:10px;border-radius:50%;background:var(--mut)}
-.on .dot{background:#ff4d4d;animation:p 1.2s infinite}@keyframes p{50%{opacity:.35}}
-input,select,button{font:inherit;color:inherit}
-input[type=search]{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;width:260px}
-select{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
-button{background:var(--gold);color:#1a1205;border:0;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer}
-button.sec{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
-main{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;padding:16px 18px}
-@media(max-width:1000px){main{grid-template-columns:minmax(0,1fr)}}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 Inter,system-ui,sans-serif;display:flex;flex-direction:column}
+button,input,select{font:inherit;color:inherit}
 .mut{color:var(--mut)}
-.top{display:flex;gap:16px;align-items:flex-start}
-.ph{width:110px;height:140px;border-radius:10px;object-fit:cover;background:var(--panel2);flex:none}
-.nm{font:800 40px/1 'Barlow Condensed',sans-serif;margin:2px 0 6px}
-.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.chip{border-radius:6px;padding:3px 10px;font-weight:700;font-size:13px;color:#10131a}
-.sr{font:800 34px/1 'Barlow Condensed',sans-serif}
-.bidbox{display:flex;gap:18px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:14px 0;flex-wrap:wrap}
-.bid{font:800 54px/1 'Barlow Condensed',sans-serif;color:var(--gold)}
-.lab{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--mut);font-weight:700}
-.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:12px 0}
-.stats div{background:var(--panel2);border-radius:10px;padding:8px 10px}
-.stats b{display:block;font:700 24px/1.1 'Barlow Condensed',sans-serif}
-ul.hl{margin:6px 0 0;padding-left:18px}ul.hl li{margin:4px 0}
-table{width:100%;border-collapse:collapse;font-size:14px}
-th{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);text-align:left;padding:6px;border-bottom:1px solid var(--line)}
-td{padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.06)}
-td.n,th.n{text-align:right}
-tr.lead td{background:rgba(255,181,71,.22)}tr.lead td:first-child{box-shadow:inset 4px 0 0 var(--gold)}tr.lead td b{color:var(--gold)}
-tr.no td{opacity:.45}
-.ok{color:var(--green)}.bad{color:var(--red)}.warn{color:var(--amber)}
-.frozen{opacity:.55;transition:opacity .2s}
-.note{font-size:12px;color:var(--mut);margin-top:8px}
-details{margin-top:12px}summary{cursor:pointer;font-weight:600}
-.empty{padding:40px 10px;text-align:center;color:var(--mut)}
-.bm{display:inline-block;text-decoration:none}
-
-.auc{display:flex;align-items:center;gap:10px;padding:4px 14px 4px 4px;border-radius:999px;background:linear-gradient(90deg,rgba(255,181,71,.22),rgba(255,181,71,.05));border:1px solid rgba(255,181,71,.55)}
-.auc img{width:40px;height:40px;border-radius:50%;object-fit:cover;object-position:top;box-shadow:0 0 0 2px var(--gold);background:var(--panel2)}
-.auc .l{font-size:10px;letter-spacing:1.6px;font-weight:700;color:var(--gold);line-height:1}
-.auc .v{font:700 18px/1.1 'Barlow Condensed',sans-serif;letter-spacing:.4px}
-.hero{display:flex;gap:26px;align-items:center;padding:26px 10px}
-.hero .pic{width:170px;height:210px;border-radius:18px;object-fit:cover;object-position:top;box-shadow:0 0 0 3px var(--gold),0 0 40px rgba(255,181,71,.35);flex:none;background:var(--panel2)}
-.hero .k{font-size:12px;letter-spacing:3px;font-weight:700;color:var(--gold)}
-.hero h2{margin:4px 0 6px;font:800 52px/1 'Barlow Condensed',sans-serif}
-.hero p{margin:6px 0;color:var(--mut)}
-.selfnote{margin:10px 0 0;padding:8px 12px;border-radius:10px;background:rgba(255,181,71,.14);border:1px solid rgba(255,181,71,.5);font-weight:600}
-
-.sbar{position:relative;display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 8px 8px 14px;margin-bottom:12px;color:var(--mut)}
-.sbar input{flex:1;background:transparent;border:0;outline:0;font-size:17px;color:var(--ink);min-width:0;width:auto}
-.sbar:focus-within{border-color:var(--gold)}
-.sug{position:absolute;left:0;right:0;top:calc(100% + 6px);background:#0d1d40;border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.45);z-index:20;display:none;max-height:440px;overflow:auto}
-.sug button{display:flex;width:100%;gap:12px;align-items:center;background:transparent;color:var(--ink);border:0;border-bottom:1px solid rgba(255,255,255,.06);border-radius:0;padding:8px 12px;text-align:left;font-weight:500}
+header{display:flex;align-items:center;gap:12px;padding:8px 16px;background:#121826;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header .logo{width:40px;height:40px;border-radius:50%;background:#e9edf3}
+header h1{margin:0;font:700 21px/1.1 'Barlow Condensed',sans-serif;letter-spacing:.6px;color:var(--ink)}
+header h1 small{display:block;font:600 11px Inter;letter-spacing:2px;color:var(--acc)}
+.sp{flex:1}
+.auc{display:flex;align-items:center;gap:9px;padding:3px 12px 3px 3px;border-radius:999px;background:rgba(226,184,107,.1);border:1px solid rgba(226,184,107,.45)}
+.auc img{width:34px;height:34px;border-radius:50%;object-fit:cover;object-position:top;background:var(--panel2)}
+.auc .l{font-size:9px;letter-spacing:1.6px;font-weight:700;color:var(--acc);line-height:1}
+.auc .v{font:700 16px/1.1 'Barlow Condensed',sans-serif}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:5px 11px;font-weight:600;font-size:12px;color:var(--mut);background:transparent;cursor:default}
+.dot{width:8px;height:8px;border-radius:50%;background:#5d6a80}
+.on{color:var(--ink)}.on .dot{background:#e88b8b;animation:p 1.6s infinite}@keyframes p{50%{opacity:.4}}
+select{background:var(--panel);border:1px solid var(--line);border-radius:7px;padding:4px 6px}
+.ctl{font-size:12px;color:var(--mut)}
+.btn{background:var(--acc);color:#231a08;border:0;border-radius:8px;padding:7px 13px;font-weight:700;cursor:pointer}
+.btn.sec{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+.sbar{position:relative;display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:4px 4px 4px 10px;color:var(--mut);width:340px}
+.sbar input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--ink);font-size:14px}
+.sbar:focus-within{border-color:var(--acc)}
+.sbar .btn{padding:5px 10px}
+.sug{position:absolute;left:0;right:0;top:calc(100% + 6px);background:#1a2232;border:1px solid var(--line);border-radius:10px;box-shadow:0 14px 30px rgba(0,0,0,.4);z-index:30;display:none;max-height:430px;overflow:auto}
+.sug button{display:flex;width:100%;gap:10px;align-items:center;background:transparent;border:0;border-bottom:1px solid rgba(255,255,255,.05);padding:7px 10px;text-align:left;cursor:pointer}
 .sug button:hover,.sug button.act{background:var(--panel2)}
-.sug img,.sug .ni{width:36px;height:44px;border-radius:6px;object-fit:cover;background:var(--panel2);flex:none}
-.sug .m{font-size:12px;color:var(--mut)}
-
-.kh{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 14px}
-.kh span{display:inline-flex;align-items:center;gap:7px;padding:7px 12px;border-radius:999px;font-weight:600;font-size:14px;line-height:1.2;border:1px solid}
-.kh svg{flex:none}
-.k-title{background:rgba(255,209,102,.16);border-color:#ffd166;color:#ffe3a3}
-.k-award{background:rgba(255,154,60,.16);border-color:#ff9a3c;color:#ffc896}
-.k-pom{background:rgba(127,209,255,.14);border-color:#7fd1ff;color:#c4e9ff}
-.k-final{background:rgba(169,184,214,.12);border-color:#a9b8d6;color:#dbe3f3}
-.k-rank{background:rgba(63,208,138,.14);border-color:#3fd08a;color:#b9f3d6}
-.k-up{background:rgba(63,208,182,.16);border-color:#3fd0b6;color:#bff5ea}
-.k-down{background:rgba(255,107,107,.12);border-color:#ff8f8f;color:#ffd0d0}
-.k-new{background:rgba(201,140,255,.15);border-color:#c98cff;color:#ead6ff}
-.k-sale{background:rgba(255,255,255,.07);border-color:#5c76a8;color:#fff}
-.sumline{margin:6px 0 0;color:#dbe3f3;font-size:15px}
-.parts{display:grid;gap:9px;margin:6px 0 4px}
-.part{display:grid;grid-template-columns:160px 1fr 92px;gap:10px;align-items:center}
-.part .nmx{font-weight:600}.part .nmx small{display:block;color:var(--mut);font-weight:500;font-size:11px}
-.bar{height:14px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
+.sug img,.sug .ni{width:32px;height:40px;border-radius:5px;object-fit:cover;background:var(--panel2);flex:none}
+.sug .m{font-size:11px;color:var(--mut)}
+#liveStrip{background:rgba(232,139,139,.12);border:1px solid rgba(232,139,139,.5);color:var(--ink);border-radius:999px;padding:5px 12px;font-weight:600;font-size:12px;cursor:pointer}
+main{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:12px;padding:12px 14px}
+.col{display:flex;flex-direction:column;min-height:0;gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px}
+.pc{flex:1;min-height:0;display:flex;flex-direction:column;gap:11px}
+.idrow{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(250px,auto);gap:14px;align-items:stretch}
+.ph{width:92px;height:116px;border-radius:10px;object-fit:cover;object-position:top;background:var(--panel2)}
+.reg{font-size:12px;color:var(--mut)}
+.nm{font:700 34px/1.02 'Barlow Condensed',sans-serif;margin:2px 0 6px;letter-spacing:.2px}
+.chips{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.cat{border-radius:6px;padding:3px 9px;font-weight:700;font-size:12px;color:#1c2230}
+.tag{border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;color:var(--ink)}
+.srbig{font:700 30px/1 'Barlow Condensed',sans-serif;color:var(--acc2)}.srbig small{font:500 11px Inter;color:var(--mut)}
+.bidbox{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;justify-content:center;gap:4px}
+.bidbox.live{border-color:rgba(226,184,107,.55)}
+.lab{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;color:var(--mut);font-weight:700}
+.bid{font:700 48px/1 'Barlow Condensed',sans-serif;color:var(--acc2)}
+.lead{font:700 20px/1.1 'Barlow Condensed',sans-serif}
+.subrow{display:flex;gap:16px;font-size:12px;color:var(--mut)}.subrow b{color:var(--ink);font:700 16px 'Barlow Condensed'}
+.kh{display:flex;flex-wrap:wrap;gap:7px;max-height:66px;overflow:hidden}
+.kh span{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:999px;font-weight:600;font-size:12.5px;line-height:1.2;border:1px solid;white-space:nowrap}
+.k-title{background:rgba(226,184,107,.12);border-color:rgba(226,184,107,.55);color:#f0d8a6}
+.k-award{background:rgba(231,166,120,.12);border-color:rgba(231,166,120,.5);color:#f1c9a9}
+.k-pom{background:rgba(147,182,230,.12);border-color:rgba(147,182,230,.5);color:#c9daf3}
+.k-final{background:rgba(155,167,188,.1);border-color:rgba(155,167,188,.4);color:#d3dae6}
+.k-rank{background:rgba(134,211,166,.1);border-color:rgba(134,211,166,.45);color:#c3ead3}
+.k-up{background:rgba(134,210,196,.12);border-color:rgba(134,210,196,.5);color:#c4ebe3}
+.k-down{background:rgba(231,154,154,.1);border-color:rgba(231,154,154,.45);color:#f1cdcd}
+.k-new{background:rgba(187,166,230,.12);border-color:rgba(187,166,230,.5);color:#ddd1f3}
+.k-sale{background:rgba(255,255,255,.05);border-color:#4a5874;color:var(--ink)}
+.sumline{font-size:13px;color:#cfd6e2;margin:0}
+.stats{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:7px}
+.stats div{background:var(--panel2);border-radius:9px;padding:6px 9px;min-width:0}
+.stats b{display:block;font:700 22px/1.1 'Barlow Condensed',sans-serif;white-space:nowrap}
+.stats small{color:var(--mut);font-size:11px;white-space:nowrap}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.tabs button{background:transparent;border:0;border-bottom:2px solid transparent;padding:7px 12px;color:var(--mut);font-weight:600;cursor:pointer}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--acc)}
+.tabbody{flex:1;min-height:0;overflow:auto;padding-top:10px}
+.parts{display:grid;gap:5px}
+.part{display:grid;grid-template-columns:150px minmax(0,1fr) 120px;gap:12px;align-items:center}
+.part .nmx{font-weight:600;line-height:1.2}.part .nmx small{display:block;color:var(--mut);font-weight:500;font-size:11px}
+.bar{height:12px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden}
 .bar i{display:block;height:100%;border-radius:999px}
-.part .val{text-align:right;font:700 20px/1 'Barlow Condensed',sans-serif}.part .val small{color:var(--mut);font:500 11px Inter}
-.srtot{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--line);margin-top:8px;padding-top:8px;font-weight:600}
-.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.part .val{text-align:right;font:700 19px/1 'Barlow Condensed',sans-serif}.part .val small{color:var(--mut);font:500 11px Inter}
+.formula{font-size:11.5px;color:var(--mut);border-top:1px solid var(--line);padding-top:8px;margin-top:4px;display:flex;justify-content:space-between;gap:12px;align-items:center}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--panel)}
+td{padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.045);white-space:nowrap}
+td.n,th.n{text-align:right}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--warn)}
+.tcard{flex:1;min-height:0;display:flex;flex-direction:column}
+.tcard h3{margin:0;font:700 18px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;color:var(--acc)}
+.tbody{flex:1;min-height:0;overflow:auto;margin-top:6px}
+.tname{max-width:190px;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+tr.leadrow td{background:rgba(226,184,107,.13)}tr.leadrow td:first-child{box-shadow:inset 3px 0 0 var(--acc)}tr.leadrow .tname{color:var(--acc2)}
+tr.no td{opacity:.45}
+.frozen{opacity:.6;transition:opacity .25s}
+.note{font-size:11px;color:var(--mut);margin-top:6px}
+.empty{padding:30px 10px;text-align:center;color:var(--mut)}
+.hero{display:flex;gap:24px;align-items:center;margin:auto 0;padding:10px}
+.hero .pic{width:150px;height:186px;border-radius:16px;object-fit:cover;object-position:top;box-shadow:0 0 0 2px rgba(226,184,107,.7);flex:none;background:var(--panel2)}
+.hero .k{font-size:11px;letter-spacing:3px;font-weight:700;color:var(--acc)}
+.hero h2{margin:4px 0 6px;font:700 46px/1 'Barlow Condensed',sans-serif}
+.hero p{margin:6px 0;color:var(--mut)}
+.selfnote{padding:6px 10px;border-radius:9px;background:rgba(226,184,107,.1);border:1px solid rgba(226,184,107,.4);font-weight:600;font-size:13px}
+dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:14px;max-width:560px}
+dialog::backdrop{background:rgba(5,8,14,.6)}
+@media(max-width:1000px),(max-height:600px){
+  body{height:auto;display:block}
+  main{grid-template-columns:minmax(0,1fr);height:auto}
+  .tabbody{overflow:visible}.tbody{overflow-x:auto;overflow-y:hidden}
+  .kh{max-height:none}
+}
 @media(max-width:760px){
   header{padding:8px 10px;gap:8px}
-  header h1{font-size:19px;flex-basis:calc(100% - 60px)}
-  header img{width:38px;height:38px}
-  .sp{display:none}
-  main{padding:10px;gap:12px}
-  .card{padding:12px}
-  .top{gap:12px}.ph{width:84px;height:106px}
-  .nm{font-size:30px}.sr{font-size:28px}
-  .bid{font-size:42px}.bidbox{gap:12px}
-  .stats{grid-template-columns:repeat(3,1fr)}
-  .stats b{font-size:21px}
-  .part{grid-template-columns:110px 1fr 70px;gap:8px}
-  .hero{flex-direction:column;text-align:center;padding:14px 4px}.hero h2{font-size:38px}.hero .pic{width:140px;height:172px}
-  .kh span{font-size:13px;padding:6px 10px}
-  table{font-size:13px}
-  .auc .v{font-size:16px}
+  .sbar{width:100%;order:9}
+  .idrow{grid-template-columns:auto minmax(0,1fr)}
+  .bidbox{grid-column:1/-1}
+  .ph{width:78px;height:98px}.nm{font-size:28px}
+  .stats{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .part{grid-template-columns:105px minmax(0,1fr) 84px;gap:8px}
+  .hero{flex-direction:column;text-align:center}.hero h2{font-size:34px}
+  .kh span{white-space:normal}
+  .hm{display:none}.tname{max-width:130px}td,th{padding:5px 4px}
 }
-h3{margin:0 0 8px;font:700 20px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;color:var(--gold)}
 </style>
 </head>
 <body>
 <header>
-  <img src="../../knpl7/skill-rating/logo.png" alt="KNPL">
-  <h1>KNPL-7 MEGA AUCTION · AUCTIONEER DESK</h1>
-  <span class="sp"></span>
+  <img class="logo" src="../../knpl7/skill-rating/logo.png" alt="KNPL">
+  <h1><small>KNPL-7 MEGA AUCTION</small>Auctioneer Desk</h1>
   <span class="auc" id="aucBadge" style="display:none"><img id="aucPic" alt=""><span><span class="l">AUCTIONEER</span><br><span class="v" id="aucName"></span></span></span>
-  <button class="sec" id="liveStrip" style="display:none"></button>
-  <span class="pill" id="link"><span class="dot"></span><span id="linkTxt">Not linked</span></span>
-  <label class="mut">Round <select id="round"><option value="1">1</option><option value="2">2</option></select></label>
-  <label class="mut" title="Team data refreshes after bids pause this long">Teams refresh <select id="pause"><option value="3">3 s</option><option value="4" selected>4 s</option><option value="5">5 s</option></select></label>
+  <span class="sp"></span>
+  <button type="button" id="liveStrip" style="display:none"></button>
+  <div class="sbar"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <input type="search" id="q" autocomplete="off" placeholder="Find a player: name or Reg No" aria-label="Find a player">
+    <button type="button" class="btn" id="qGo">Show</button>
+    <div class="sug" id="sug" role="listbox"></div></div>
+  <label class="ctl">Round <select id="round"><option value="1">1</option><option value="2">2</option></select></label>
+  <label class="ctl" title="Team data refreshes after bids pause this long">Teams refresh <select id="pause"><option value="3">3 s</option><option value="4" selected>4 s</option><option value="5">5 s</option></select></label>
+  <button type="button" class="pill" id="link" title="Live link set-up"><span class="dot"></span><span id="linkTxt">Not linked</span></button>
 </header>
 <main>
-  <section>
-    <div class="sbar"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-      <input type="search" id="q" autocomplete="off" placeholder="Find a player: type a name or Reg No (e.g. 28)" aria-label="Find a player">
-      <button type="button" id="qGo">Show</button>
-      <div class="sug" id="sug" role="listbox"></div></div>
-    <div class="card" id="player"><div class="empty">Loading players…</div></div>
-  </section>
-  <section>
-    <div class="card"><h3>Teams</h3><div id="teamsHint" class="mut" style="font-size:13px"></div><div id="teams"></div></div>
-    <details class="card" style="margin-top:16px" id="setup">
-      <summary>Set up the live link to Super Player Auction</summary>
-      <ol class="mut">
-        <li>Drag this button to the Chrome bookmarks bar (one time): <a class="bm" id="bm" href="#"><button type="button">KNPL Auctioneer Link</button></a></li>
-        <li>Open the KNPL-7 auction <b>screen</b> on Super Player Auction in Chrome.</li>
-        <li>Click <b>KNPL Auctioneer Link</b> on the bookmarks bar. This desk opens in a new tab and follows the auction: player on the block, live bid, sales and team purses.</li>
-      </ol>
-      <div class="note">If the auction tab reloads, the link drops; click the bookmark again. You can always search any player by name or Reg No.</div>
-    </details>
-  </section>
+  <div class="col"><div class="card pc" id="player"><div class="empty">Loading players…</div></div></div>
+  <div class="col"><div class="card tcard"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px"><h3>Teams</h3><span id="teamsHint" class="mut" style="font-size:12px"></span></div><div class="tbody" id="teams"></div></div></div>
 </main>
+<dialog id="setup">
+  <h3 style="margin-top:0;color:var(--acc);font-family:'Barlow Condensed';font-size:22px">Live link to Super Player Auction</h3>
+  <ol class="mut" style="padding-left:18px">
+    <li>Drag this button to the Chrome bookmarks bar (one time): <a id="bm" href="#" style="text-decoration:none"><span class="btn" style="display:inline-block">KNPL Auctioneer Link</span></a></li>
+    <li>Open the KNPL-7 auction <b>screen</b> on Super Player Auction in Chrome.</li>
+    <li>Click <b>KNPL Auctioneer Link</b>. This desk opens in a new tab and follows the auction: player on the block, live bid, sales and team purses.</li>
+  </ol>
+  <p class="note">If the auction tab reloads, the link drops; click the bookmark again. Any player can be looked up with Find a player.</p>
+  <form method="dialog" style="text-align:right"><button class="btn sec">Close</button></form>
+</dialog>
 <script>
 const SPA_ORIGIN="https://superplayerauction.com";
 const RULES={squad:14,cap:560,bonus:25,reserve:2000,lim:{C:1,D:3,DA:1,R:10,RSE:7,RSC:4,CD:6}};
-const CAT={"Conqueror Vanguard":["CV","C","#ffd166"],"Conqueror Core":["CC","C","#ffb547"],"Dominator Apex":["DA","D","#7fd1ff"],"Dominator Core":["DC","D","#a8c8ff"],"Rising Star Elite":["RSE","R","#8ef0b8"],"Rising Star Core":["RSC","R","#c9f2d8"]};
+const CAT={"Conqueror Vanguard":["CV","C","#e9cf8f"],"Conqueror Core":["CC","C","#e2b86b"],"Dominator Apex":["DA","D","#a9c7ec"],"Dominator Core":["DC","D","#c3d4ee"],"Rising Star Elite":["RSE","R","#a6dcbc"],"Rising Star Core":["RSC","R","#cfe9d9"]};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmt=n=>(+n||0).toLocaleString('en-IN');
 const norm=s=>String(s||"").toUpperCase().replace(/\(.*?\)/g,"").replace(/[^A-Z]/g,"");
 const normTeam=s=>norm(s).replace(/^THE/,"").replace(/MITHILAS/,"MIDHILAS").replace(/CHITRAKOOT/,"CHITHRAKOOT");
 let DATA=[], BYID={}, AVG_RSC=19, AUC=null; const AUC_ID='KNPL7-0224', AUC_NAME='Ajaya Ghosh';
-const ST={view:null,on:false,at:0,cur:null,curInfo:null,bid:0,bidteam:"",teams:{},squads:{},prev:null,bidding:false,timer:null,lastBidAt:0,frozenTeams:null};
-
+let TAB=(()=>{try{return localStorage.getItem('aucTab')||'parts'}catch(e){return 'parts'}})();
+const ST={view:null,on:false,at:0,cur:null,curInfo:null,bid:0,bidteam:"",teams:{},squads:{},prev:null,bidding:false,timer:null,lastBidAt:0};
+function catOf(c){ return CAT[c]||[c||"–","","#c9d1de"]; }
+const ICO={title:'<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>',
+ award:'<circle cx="12" cy="9" r="6"/><path d="M8.5 14 7 22l5-3 5 3-1.5-8"/>',
+ pom:'<path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7L12 17.8 5.8 21.2l1.3-7L2 9.4l7-.9z"/>',
+ final:'<path d="M4 22V4M4 4h12l-2 4 2 4H4"/>', rank:'<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',
+ up:'<path d="M12 19V5M5 12l7-7 7 7"/>', down:'<path d="M12 5v14M5 12l7 7 7-7"/>',
+ new:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
+ sale:'<path d="M20 12l-8 8-9-9V3h8z"/><circle cx="7.5" cy="7.5" r="1.5"/>'};
+const icon=k=>`<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICO[k]||ICO.rank}</svg>`;
+const PARTS=[['P','Performance',55,'#86a9dd'],['W','Win Impact',15,'#e2a77a'],['Aw','Awards',10,'#e2c27f'],['C','Consistency',10,'#ae9ad8'],['E','Experience',10,'#7fc4b7']];
+const HL_ORDER=['title','award','pom','up','down','new','rank','final'];
 function step(v){ return v<2000?100: v<8000?200: v<10000?400:500; }
 function findPlayer(info){
   if(!info) return null;
@@ -167,68 +187,6 @@ function findPlayer(info){
   if(m){ const p=BYID["KNPL7-"+m[1].padStart(4,"0")]; if(p){ const f=norm(p.n).slice(0,4); if(!n||n.includes(f)||norm(p.n).includes(n.slice(0,4))) return p; } }
   return DATA.find(p=>norm(p.n)===n) || (n.length>5 && DATA.find(p=>norm(p.n).includes(n)||n.includes(norm(p.n)))) || null;
 }
-const ICO={title:'<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>',
- award:'<circle cx="12" cy="9" r="6"/><path d="M8.5 14 7 22l5-3 5 3-1.5-8"/>',
- pom:'<path d="M12 2l3 6.5 7 .9-5.1 4.8 1.3 7L12 17.8 5.8 21.2l1.3-7L2 9.4l7-.9z"/>',
- final:'<path d="M4 22V4M4 4h12l-2 4 2 4H4"/>',
- rank:'<path d="M3 17l6-6 4 4 8-8"/><path d="M14 7h7v7"/>',
- up:'<path d="M12 19V5M5 12l7-7 7 7"/>', down:'<path d="M12 5v14M5 12l7 7 7-7"/>',
- new:'<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>',
- sale:'<path d="M20 12l-8 8-9-9V3h8z"/><circle cx="7.5" cy="7.5" r="1.5"/>'};
-const icon=k=>`<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICO[k]||ICO.rank}</svg>`;
-const PARTS=[['P','Performance',55,'#4f8cff'],['W','Win Impact',15,'#ff9a3c'],['Aw','Awards',10,'#ffd166'],['C','Consistency',10,'#b48cff'],['E','Experience',10,'#3fd0b6']];
-function partsHTML(p){
-  const x=p.x||{};
-  return `<div class="parts">${PARTS.map(([k,l,w,c])=>{ const v=+x[k]||0; return `<div class="part"><div class="nmx">${l}<small>${w}% of Skill Rating</small></div><div class="bar" role="img" aria-label="${l} ${v} out of 100"><i style="width:${Math.max(0,Math.min(100,v))}%;background:${c}"></i></div><div class="val">${v}<small> /100</small><br><small>+${(v*w/100).toFixed(1)} pts</small></div></div>`; }).join("")}
-   <div class="srtot"><span class="mut" style="font-weight:500;font-size:12px">Skill Rating = 0.55 × Performance + 0.15 × Win Impact + 0.10 × Awards + 0.10 × Consistency + 0.10 × Experience → rounded to a whole number</span><span class="sr" style="font-size:26px">${p.s}</span></div></div>`;
-}
-function catOf(c){ return CAT[c]||[c||"–","",""]; }
-
-/* ---------- player card ---------- */
-function renderPlayer(p, info){
-  const box=$('player');
-  if(!p && !info && AUC){ box.innerHTML=`<div class="hero">${AUC.ph?`<img class="pic" alt="" src="data:image/jpeg;base64,${AUC.ph}">`:""}<div>
-     <div class="k">KNPL-7 MEGA AUCTION · AUCTIONEER</div><h2>Welcome, ${esc(AUC_NAME)}</h2>
-     <p>12 December 2026 · 8:00 AM · Chola Farm Resorts, Karukutty</p>
-     <p>Every player who comes on the block appears here with his Skill Rating, key numbers and highlights. Team purses and who can bid refresh whenever bidding pauses.</p>
-     <p class="mut" style="font-size:13px">Waiting for the first player… or search any player above.</p></div></div>`; return; }
-  if(!p){ box.innerHTML = info? `<div class="empty"><div class="nm">${esc(info.name||"Unknown player")}</div>Not found in the KNPL-7 Skill Rating list. Search by name or Reg No.</div>` : `<div class="empty">Waiting for the next player… or search above.</div>`; return; }
-  const [code,grp,col]=catOf(p.c), s=p.st;
-  const ph=p.ph?`<img class="ph" alt="" src="data:image/jpeg;base64,${p.ph}">`:`<div class="ph"></div>`;
-  const live = ST.cur===p && !!ST.curInfo; ST.view=p;
-  const bidHTML = live? `<div class="bidbox"><div><div class="lab">Current bid</div><div class="bid">${ST.bid?fmt(ST.bid):"–"}</div></div>
-     <div><div class="lab">Leading</div><div style="font:700 24px 'Barlow Condensed'">${esc(ST.bidteam||"No bid yet")}</div></div>
-     <div><div class="lab">Next bid</div><div style="font:700 24px 'Barlow Condensed'">${fmt((ST.bid||p.bt)+(ST.bid?step(ST.bid):0))}</div></div>
-     <div><div class="lab">Base point</div><div style="font:700 24px 'Barlow Condensed'">${fmt(p.bt)}</div></div></div>` :
-     `<div class="bidbox"><div><div class="lab">Base point</div><div class="bid">${fmt(p.bt)}</div></div><div class="mut">Base price ₹${fmt(p.bp)}</div></div>`;
-  const kn=p.seasons.filter(x=>x.t.startsWith("KNPL")), ql=p.seasons.filter(x=>!x.t.startsWith("KNPL"));
-  const srow=x=>`<tr><td>${esc(x.t)}</td><td>${esc(x.team)}</td><td class="n">${x.m}</td><td class="n">${x.mvp}</td><td class="n">${x.pom||""}</td><td>${x.res?`<b class="${x.res==='Champion'?'ok':''}">${x.res}</b>`:""}</td></tr>`;
-  box.innerHTML=`
-   <div class="top">${ph}<div style="flex:1;min-width:0">
-     <div class="mut">${esc(p.id)} · ${esc(p.d)}${p.style?` · ${esc(p.style)}`:""}</div>
-     <div class="nm">${esc(p.n)}</div>
-     <div class="chips"><span class="chip" style="background:${col}">${esc(p.c)}</span><span class="sr">${p.s}<span class="mut" style="font-size:16px"> / 100 Skill Rating</span></span><span class="pill">${esc(p.role)}</span>${p.f?'<span class="pill" style="color:var(--teal);border-color:var(--teal)">NPL-5</span>':""}</div>
-   </div></div>
-   ${AUC&&p===AUC?`<div class="selfnote">Our auctioneer is on the block — over to the panel for this one!</div>`:""}
-   ${bidHTML}
-   <h3>Key highlights</h3>
-   <div class="kh">${p.hl.map(([k,t])=>`<span class="k-${k}">${icon(k)}${esc(t)}</span>`).join("")}${p.sales.map(x=>`<span class="k-sale">${icon('sale')}${esc(x.a.replace('KNPL auction ','KNPL '))}: ${esc(x.team)} · ${fmt(x.pts)} pts</span>`).join("")}${!p.hl.length&&!p.sales.length?'<span class="k-final">No titles or awards yet in the last 3 seasons</span>':''}</div>
-   <div class="lab">Last 3 seasons · KNPL + qualifying leagues</div>
-   <p class="sumline"><b>${esc(p.role)}:</b> ${esc(p.sum||"")}</p>
-   <div class="stats">
-     <div><span class="lab">Matches</span><b>${s.m}</b></div><div><span class="lab">Runs</span><b>${fmt(s.runs)}</b></div><div><span class="lab">Bat avg</span><b>${s.avg}</b></div>
-     <div><span class="lab">Best</span><b>${s.hs}</b></div><div><span class="lab">6s / 4s</span><b>${s.s6} / ${s.f4}</b></div><div><span class="lab">50s / 100s</span><b>${s.h50} / ${s.h100}</b></div>
-     <div><span class="lab">Wickets</span><b>${s.wk}</b></div><div><span class="lab">Overs</span><b>${s.ov}</b></div><div><span class="lab">Catches</span><b>${s.ct}</b></div>
-     <div><span class="lab">MVP points</span><b>${s.mvp}</b></div><div><span class="lab">Player of Match</span><b>${s.pom}</b></div><div><span class="lab">Last KNPL sale</span><b>${p.sales.length?fmt(p.sales[p.sales.length-1].pts):"–"}</b></div>
-   </div>
-   <h3 style="margin-top:14px">Skill Rating breakdown</h3>
-   ${partsHTML(p)}
-   <details ${kn.length?"open":""}><summary>KNPL seasons (${kn.length})</summary>${kn.length?`<div class="tw"><table><tr><th>Season</th><th>Team</th><th class="n">M</th><th class="n">MVP</th><th class="n">PoM</th><th></th></tr>${kn.map(srow).join("")}</table></div>`:'<div class="mut">New to KNPL (no KNPL-4 to KNPL-6 matches).</div>'}</details>
-   <details><summary>Qualifying leagues (${ql.length} seasons)</summary><div class="tw"><table><tr><th>Season</th><th>Team</th><th class="n">M</th><th class="n">MVP</th><th class="n">PoM</th><th></th></tr>${ql.map(srow).join("")}</table></div></details>
-   <div class="note">Skill Rating parts are from the official KNPL-7 Skill Rating (final, after NPL-5). Highlights are generated automatically from the player's CricHeroes data: KNPL-4 to 6 and qualifying leagues, NPL-5 included.</div>`;
-}
-
-/* ---------- teams ---------- */
 function teamRows(){
   const p=ST.view, round=+$('round').value;
   const names=Object.keys(ST.teams);
@@ -238,37 +196,24 @@ function teamRows(){
     sq.forEach(x=>{ const [code,g]=catOf(x.c); if(g)k[g]++; if(k[code]!=null)k[code]++; rat+=x.s||0; });
     const n=live.n!=null?live.n:sq.length, places=Math.max(0,RULES.squad-n), purse=live.rm;
     const maxBid=places>0? purse-RULES.reserve*(places-1) : 0;
-    let ok=places>0, why=places>0?"":"Squad full";
+    let ok=places>0, why=places>0?"":"Full";
     let ratTxt="", ratCls="";
     if(p){
       const [code,g]=catOf(p.c);
       if(ok && round===1){ const kk={...k}; kk[g]++; if(kk[code]!=null)kk[code]++;
         const L=RULES.lim;
-        if(kk.C>L.C) {ok=false;why="Conqueror limit";} else if(kk.D>L.D){ok=false;why="Dominator limit";} else if(kk.DA>L.DA){ok=false;why="Apex limit";}
-        else if(kk.R>L.R){ok=false;why="Rising Star limit";} else if(kk.RSE>L.RSE){ok=false;why="Elite limit";} else if(kk.RSC>L.RSC){ok=false;why="Core limit";} else if(kk.C+kk.D>L.CD){ok=false;why="C+D limit";} }
+        if(kk.C>L.C) {ok=false;why="C limit";} else if(kk.D>L.D){ok=false;why="D limit";} else if(kk.DA>L.DA){ok=false;why="Apex limit";}
+        else if(kk.R>L.R){ok=false;why="RS limit";} else if(kk.RSE>L.RSE){ok=false;why="Elite limit";} else if(kk.RSC>L.RSC){ok=false;why="Core limit";} else if(kk.C+kk.D>L.CD){ok=false;why="C+D limit";} }
       const need=rat+p.s+AVG_RSC*Math.max(0,places-1);
       if(need<=RULES.cap){ ratTxt=`${RULES.cap-rat}`; ratCls="ok"; }
       else if(need<=RULES.cap+RULES.bonus){ ratTxt=`${RULES.cap-rat} · bonus`; ratCls="warn"; }
-      else { ratTxt=`${RULES.cap-rat}`; ratCls="bad"; if(ok){ok=false;why="Skill Rating cap";} }
+      else { ratTxt=`${RULES.cap-rat}`; ratCls="bad"; if(ok){ok=false;why="SR cap";} }
       const bidNow=Math.max(ST.bid, p.bt);
       if(ok && maxBid<bidNow){ ok=false; why="Points"; }
     } else ratTxt=`${RULES.cap-rat}`;
     return {t,n,places,purse,maxBid,ok,why,ratTxt,ratCls,k};
   }).sort((a,b)=>(b.ok-a.ok)||(b.maxBid-a.maxBid));
 }
-function renderTeams(force){
-  const box=$('teams'), hint=$('teamsHint');
-  if(!Object.keys(ST.teams).length){ box.innerHTML='<div class="empty">Team purses appear here once the live link is on.</div>'; hint.textContent=""; return; }
-  if(ST.bidding && !force){ box.classList.add('frozen'); hint.innerHTML=`<b class="warn">Bidding in progress…</b> team data refreshes when bids pause for ${$('pause').value} s.`; return; }
-  box.classList.remove('frozen');
-  const rows=teamRows(), lead=normTeam(ST.bidteam), p=ST.view;
-  const can=rows.filter(r=>r.ok).length;
-  hint.innerHTML = p? `<b>${can}</b> team${can===1?"":"s"} can bid for this ${esc(catOf(p.c)[0])} player${$('round').value==="1"?" (Round 1 limits on)":" (Round 2: no category limits)"}.` : "";
-  box.innerHTML=`<div class="tw"><table><tr><th>Team</th><th class="n">Players</th><th class="n">Points left</th><th class="n">Max bid</th><th class="n">SR room</th><th>Can bid</th></tr>
-   ${rows.map(r=>`<tr class="${normTeam(r.t)===lead&&lead?'lead':''} ${r.ok?'':'no'}"><td><b>${esc(r.t)}</b><div class="mut" style="font-size:11px">C ${r.k.C} · D ${r.k.D} · RS ${r.k.R}</div></td><td class="n">${r.n}/${RULES.squad}</td><td class="n">${fmt(r.purse)}</td><td class="n"><b>${fmt(Math.max(0,r.maxBid))}</b></td><td class="n ${r.ratCls}">${r.ratTxt}</td><td>${r.ok?'<b class="ok">Yes</b>':`<span class="bad">${esc(r.why)}</span>`}</td></tr>`).join("")}</table></div>
-   <div class="note">Max bid keeps ${fmt(RULES.reserve)} points for each other empty place. SR room = ${RULES.cap} cap minus the squad's Skill Ratings; "bonus" means the player fits only with the one-time +${RULES.bonus}. Squads and categories come from the auction platform; check any doubtful case against the official rules.</div>`;
-}
-
 /* ---------- live link ---------- */
 function onBid(){
   ST.bidding=true; ST.lastBidAt=Date.now(); clearTimeout(ST.timer);
@@ -302,6 +247,72 @@ function handle(m){
 window.addEventListener('message',e=>{ if(e.origin!==SPA_ORIGIN||!e.data||!e.data.knplauc) return; try{handle(e.data);}catch(err){console.log(err);} });
 setInterval(()=>{ if(ST.on && Date.now()-ST.at>15000){ ST.on=false; $('link').classList.remove('on'); $('linkTxt').textContent="Link lost — click the bookmark again"; } },5000);
 
+/* ---------- player ---------- */
+function partsHTML(p){
+  const x=p.x||{};
+  return `<div class="parts">${PARTS.map(([k,l,w,c])=>{ const v=+x[k]||0; return `<div class="part"><div class="nmx">${l}<small>${w}% of Skill Rating</small></div><div class="bar" role="img" aria-label="${l} ${v} out of 100"><i style="width:${Math.max(0,Math.min(100,v))}%;background:${c}"></i></div><div class="val">${v}<small> /100 · +${(v*w/100).toFixed(1)}</small></div></div>`; }).join("")}
+   <div class="formula"><span>Skill Rating = 0.55 × Performance + 0.15 × Win Impact + 0.10 × Awards + 0.10 × Consistency + 0.10 × Experience → rounded to a whole number</span><span class="srbig">${p.s}</span></div></div>`;
+}
+function seasonsHTML(list, emptyMsg){
+  if(!list.length) return `<div class="empty">${emptyMsg}</div>`;
+  return `<table><tr><th>Season</th><th>Team</th><th class="n">Matches</th><th class="n">MVP pts</th><th class="n">PoM</th><th>Finish</th></tr>${list.map(x=>`<tr><td>${esc(x.t)}</td><td style="white-space:normal">${esc(x.team)}</td><td class="n">${x.m}</td><td class="n">${x.mvp}</td><td class="n">${x.pom||""}</td><td>${x.res?`<span class="${x.res==='Champion'?'ok':''}" style="font-weight:600">${x.res}</span>`:""}</td></tr>`).join("")}</table>`;
+}
+function tabBody(p){
+  if(TAB==='knpl') return seasonsHTML(p.seasons.filter(x=>x.t.startsWith("KNPL")), "New to KNPL: no KNPL-4 to KNPL-6 matches.");
+  if(TAB==='qual') return seasonsHTML(p.seasons.filter(x=>!x.t.startsWith("KNPL")), "No qualifying-league matches in the last 3 seasons.");
+  return partsHTML(p);
+}
+function renderPlayer(p, info){
+  const box=$('player');
+  if(!p && !info && AUC){ ST.view=null; box.innerHTML=`<div class="hero">${AUC.ph?`<img class="pic" alt="" src="data:image/jpeg;base64,${AUC.ph}">`:""}<div>
+     <div class="k">KNPL-7 MEGA AUCTION · AUCTIONEER</div><h2>Welcome, ${esc(AUC_NAME)}</h2>
+     <p>12 December 2026 · 8:00 AM · Chola Farm Resorts, Karukutty</p>
+     <p>Every player who comes on the block appears here with his Skill Rating, key highlights and numbers. The team list on the right refreshes whenever bidding pauses.</p>
+     <p style="font-size:12px">Waiting for the first player… or use Find a player at the top.</p></div></div>`; return; }
+  if(!p){ box.innerHTML = info? `<div class="empty"><div class="nm">${esc(info.name||"Unknown player")}</div>Not found in the KNPL-7 Skill Rating list. Use Find a player.</div>` : `<div class="empty">Waiting for the next player…</div>`; return; }
+  ST.view=p;
+  const [code,grp,col]=catOf(p.c), s=p.st, live=ST.cur===p && !!ST.curInfo;
+  const ph=p.ph?`<img class="ph" alt="" src="data:image/jpeg;base64,${p.ph}">`:`<div class="ph"></div>`;
+  const nb = ST.bid? ST.bid+step(ST.bid) : p.bt;
+  const bid = live? `<div class="bidbox live"><div class="lab">Current bid</div><div class="bid">${ST.bid?fmt(ST.bid):"–"}</div><div class="lead">${esc(ST.bidteam||"No bid yet")}</div><div class="subrow"><span>Next bid <b>${fmt(nb)}</b></span><span>Base <b>${fmt(p.bt)}</b></span></div></div>`
+    : `<div class="bidbox"><div class="lab">Base point</div><div class="bid">${fmt(p.bt)}</div><div class="subrow"><span>Base price <b>₹${fmt(p.bp)}</b></span></div></div>`;
+  const hl=[...p.hl].sort((a,b)=>HL_ORDER.indexOf(a[0])-HL_ORDER.indexOf(b[0]));
+  const chips=hl.map(([k,t])=>`<span class="k-${k}">${icon(k)}${esc(t)}</span>`).concat(p.sales.map(x=>`<span class="k-sale">${icon('sale')}${esc(x.a.replace('KNPL auction ','KNPL '))}: ${esc(x.team)} · ${fmt(x.pts)} pts</span>`));
+  const tiles=[["Matches",s.m,""],["Runs",fmt(s.runs),`avg ${s.avg}`],["Best",s.hs,`${s.h50}×50 · ${s.h100}×100`],["Sixes",s.s6,`${s.f4} fours`],["Wickets",s.wk,`${s.ov} overs`],["Catches",s.ct,""],["MVP points",s.mvp,""],["Player of Match",s.pom,""]];
+  box.innerHTML=`
+   <div class="idrow">${ph}<div style="min-width:0">
+     <div class="reg">${esc(p.id)} · ${esc(p.d)}${p.style?` · ${esc(p.style)}`:""}</div>
+     <div class="nm">${esc(p.n)}</div>
+     <div class="chips"><span class="cat" style="background:${col}">${esc(p.c)}</span><span class="srbig">${p.s}<small> Skill Rating</small></span><span class="tag">${esc(p.role)}</span>${p.f?'<span class="tag" style="border-color:rgba(134,210,196,.6);color:var(--teal)">NPL-5</span>':""}</div>
+     ${AUC&&p===AUC?`<div class="selfnote" style="margin-top:8px">Our auctioneer is on the block — over to the panel for this one!</div>`:""}
+   </div>${bid}</div>
+   <div class="kh" id="kh">${chips.length?chips.join(""):'<span class="k-final">No titles or awards in the last 3 seasons</span>'}</div>
+   <p class="sumline"><span class="lab" style="margin-right:6px">Last 3 seasons · KNPL + qualifying</span>${esc(p.sum||"")}</p>
+   <div class="stats">${tiles.map(([l,v,sm])=>`<div><span class="lab">${l}</span><b>${v}</b>${sm?`<small>${sm}</small>`:""}</div>`).join("")}</div>
+   <div class="tabs" role="tablist">${[['parts','Skill Rating breakdown'],['knpl',`KNPL seasons (${p.seasons.filter(x=>x.t.startsWith("KNPL")).length})`],['qual',`Qualifying leagues (${p.seasons.filter(x=>!x.t.startsWith("KNPL")).length})`]].map(([k,l])=>`<button type="button" role="tab" data-tab="${k}" aria-selected="${TAB===k}">${l}</button>`).join("")}</div>
+   <div class="tabbody" id="tabbody">${tabBody(p)}</div>`;
+  fitChips();
+}
+function fitChips(){ const k=$('kh'); if(!k || getComputedStyle(k).maxHeight==='none') return; const sp=[...k.children]; let hidden=0;
+  sp.forEach(s=>s.style.display=''); for(let i=sp.length-1;i>0 && k.scrollHeight>k.clientHeight+2;i--){ sp[i].style.display='none'; hidden++; }
+  if(hidden){ const m=document.createElement('span'); m.className='k-final'; m.textContent=`+${hidden} more`; m.title=sp.slice(sp.length-hidden).map(x=>x.textContent).join('\n'); k.appendChild(m); while(k.scrollHeight>k.clientHeight+2){ const vis=[...k.children].filter(x=>x.style.display!=='none' && x!==m); if(vis.length<2) break; vis[vis.length-1].style.display='none'; hidden++; m.textContent=`+${hidden} more`; } } }
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(!b||!ST.view) return; TAB=b.dataset.tab; try{localStorage.setItem('aucTab',TAB)}catch(_){}
+  document.querySelectorAll('[data-tab]').forEach(x=>x.setAttribute('aria-selected',x.dataset.tab===TAB)); $('tabbody').innerHTML=tabBody(ST.view); });
+window.addEventListener('resize',fitChips);
+
+/* ---------- teams ---------- */
+function renderTeams(force){
+  const box=$('teams'), hint=$('teamsHint');
+  if(!Object.keys(ST.teams).length){ box.innerHTML='<div class="empty">Team points and who can bid appear here once the live link is on.<br><br><button type="button" class="btn sec" onclick="document.getElementById(\'setup\').showModal()">How to link</button></div>'; hint.textContent=""; return; }
+  if(ST.bidding && !force){ box.classList.add('frozen'); hint.innerHTML=`<span class="warn">Bidding… refreshes after a ${$('pause').value} s pause</span>`; return; }
+  box.classList.remove('frozen');
+  const rows=teamRows(), lead=normTeam(ST.bidteam), p=ST.view, can=rows.filter(r=>r.ok).length;
+  hint.innerHTML = p? `<b style="color:var(--ink)">${can}</b> can bid · ${esc(catOf(p.c)[0])} · ${$('round').value==="1"?"Round 1 limits":"Round 2, no limits"}` : "";
+  box.innerHTML=`<table><tr><th>Team</th><th class="n">Squad</th><th class="n hm">C·D·RS</th><th class="n">Points left</th><th class="n">Max bid</th><th class="n">SR room</th><th>Can bid</th></tr>
+   ${rows.map(r=>`<tr class="${normTeam(r.t)===lead&&lead?'leadrow':''} ${r.ok?'':'no'}"><td><div class="tname" title="${esc(r.t)}">${esc(r.t)}</div></td><td class="n">${r.n}/${RULES.squad}</td><td class="n mut hm">${r.k.C}·${r.k.D}·${r.k.R}</td><td class="n">${fmt(r.purse)}</td><td class="n"><b>${fmt(Math.max(0,r.maxBid))}</b></td><td class="n ${r.ratCls}">${r.ratTxt}</td><td>${r.ok?'<span class="ok" style="font-weight:600">Yes</span>':`<span class="bad">${esc(r.why)}</span>`}</td></tr>`).join("")}</table>
+   <div class="note">C·D·RS = Conquerors, Dominators, Rising Stars in the squad. Max bid keeps ${fmt(RULES.reserve)} points for each other empty place. SR room = ${RULES.cap} minus the squad's Skill Ratings; "bonus" = fits only with the one-time +${RULES.bonus}. Check doubtful cases against the official rules.</div>`;
+}
+
 /* ---------- search ---------- */
 let SUG=[], SUGI=-1;
 function matches(v){
@@ -318,7 +329,7 @@ function showSug(){
   box.innerHTML = SUG.length? SUG.map((p,i)=>`<button type="button" role="option" data-i="${i}" class="${i===0?'act':''}">${p.ph?`<img alt="" src="data:image/jpeg;base64,${p.ph}">`:'<span class="ni"></span>'}<span><b>${esc(p.n)}</b><div class="m">${esc(p.id)} · ${esc(p.d)} · ${esc(p.c)} · SR ${p.s}</div></span></button>`).join("") : '<div class="mut" style="padding:12px">No player found</div>';
   box.style.display='block';
 }
-function pick(p){ if(!p) return; $('sug').style.display='none'; $('q').value=''; renderPlayer(p); renderTeams(true); renderStrip(); window.scrollTo({top:0,behavior:'smooth'}); }
+function pick(p){ if(!p) return; $('sug').style.display='none'; $('q').value=''; $('q').blur(); renderPlayer(p); renderTeams(true); renderStrip(); }
 function search(){ const m=SUG.length?SUG:matches($('q').value); pick(m[Math.max(0,SUGI)]); }
 $('q').addEventListener('input',showSug);
 $('q').addEventListener('keydown',e=>{
@@ -334,6 +345,7 @@ function renderStrip(){ const b=$('liveStrip'); if(!ST.curInfo || ST.view===ST.c
   b.style.display=''; b.textContent=`● On the block: ${ST.cur?ST.cur.n:(ST.curInfo.name||'')} · ${ST.bid?fmt(ST.bid)+' '+ST.bidteam:'no bid'} — show`; }
 $('liveStrip').onclick=()=>{ if(ST.curInfo){ renderPlayer(ST.cur, ST.curInfo); renderTeams(true); renderStrip(); } };
 
+$('link').onclick=()=>$('setup').showModal();
 /* ---------- bookmark (runs on the Super Player Auction screen) ---------- */
 const BM=function(){
   var DESK='https://knplseason7.github.io';
@@ -354,6 +366,7 @@ const BM=function(){
 };
 $('bm').href='javascript:'+encodeURIComponent('('+BM.toString()+')()');
 $('bm').onclick=e=>{ e.preventDefault(); alert('Drag this button to your bookmarks bar, then click it on the Super Player Auction screen.'); };
+
 
 /* ---------- load ---------- */
 fetch('data.json',{cache:'no-cache'}).then(r=>r.json()).then(j=>{

@@ -86,12 +86,12 @@ details{margin-top:12px}summary{cursor:pointer;font-weight:600}
 .k-sale{background:rgba(255,255,255,.07);border-color:#5c76a8;color:#fff}
 .sumline{margin:6px 0 0;color:#dbe3f3;font-size:15px}
 .parts{display:grid;gap:9px;margin:6px 0 4px}
-.part{display:grid;grid-template-columns:150px 1fr 92px;gap:10px;align-items:center}
+.part{display:grid;grid-template-columns:160px 1fr 92px;gap:10px;align-items:center}
 .part .nmx{font-weight:600}.part .nmx small{display:block;color:var(--mut);font-weight:500;font-size:11px}
 .bar{height:14px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
 .bar i{display:block;height:100%;border-radius:999px}
 .part .val{text-align:right;font:700 20px/1 'Barlow Condensed',sans-serif}.part .val small{color:var(--mut);font:500 11px Inter}
-.srtot{display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);margin-top:8px;padding-top:8px;font-weight:600}
+.srtot{display:flex;justify-content:space-between;align-items:center;gap:12px;border-top:1px solid var(--line);margin-top:8px;padding-top:8px;font-weight:600}
 .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
 @media(max-width:760px){
   header{padding:8px 10px;gap:8px}
@@ -179,8 +179,8 @@ const icon=k=>`<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24
 const PARTS=[['P','Performance',55,'#4f8cff'],['W','Win Impact',15,'#ff9a3c'],['Aw','Awards',10,'#ffd166'],['C','Consistency',10,'#b48cff'],['E','Experience',10,'#3fd0b6']];
 function partsHTML(p){
   const x=p.x||{};
-  return `<div class="parts">${PARTS.map(([k,l,w,c])=>{ const v=+x[k]||0; return `<div class="part"><div class="nmx">${l}<small>${w}% of rating</small></div><div class="bar" role="img" aria-label="${l} ${v} out of 100"><i style="width:${Math.max(0,Math.min(100,v))}%;background:${c}"></i></div><div class="val">${v}<small> /100</small><br><small>+${(v*w/100).toFixed(1)} pts</small></div></div>`; }).join("")}
-   <div class="srtot"><span>Skill Rating = weighted total, rounded</span><span class="sr" style="font-size:26px">${p.s}</span></div></div>`;
+  return `<div class="parts">${PARTS.map(([k,l,w,c])=>{ const v=+x[k]||0; return `<div class="part"><div class="nmx">${l}<small>${w}% of Skill Rating</small></div><div class="bar" role="img" aria-label="${l} ${v} out of 100"><i style="width:${Math.max(0,Math.min(100,v))}%;background:${c}"></i></div><div class="val">${v}<small> /100</small><br><small>+${(v*w/100).toFixed(1)} pts</small></div></div>`; }).join("")}
+   <div class="srtot"><span class="mut" style="font-weight:500;font-size:12px">Skill Rating = 0.55 × Performance + 0.15 × Win Impact + 0.10 × Awards + 0.10 × Consistency + 0.10 × Experience → rounded to a whole number</span><span class="sr" style="font-size:26px">${p.s}</span></div></div>`;
 }
 function catOf(c){ return CAT[c]||[c||"–","",""]; }
 

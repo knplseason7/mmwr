@@ -688,6 +688,7 @@ function renderDash(){
     return `<div class="catbox"><div class="mut" style="font-size:12px">${GNAME[g]}</div><div class="v" style="color:var(--${g==="C"?"cq":g==="D"?"dm":"rs"})">${t.g[g]}${lim?`<span class="mut" style="font-size:16px"> / ${lim}</span>`:""}</div></div>`;}).join("")}</div>`;
 
   const al=[];
+  if(P().length && S.syncedAt && Date.now()-S.syncedAt>12*3600*1000) al.push(`<div class="warn">• Player data was last refreshed ${new Date(S.syncedAt).toLocaleString('en-IN')}. ${IN_CLAUDE?"Sync in ⚙️ Setup &amp; Data":"⚙️ Setup &amp; Data → Refresh player data"} to pick up the latest ratings and stats.</div>`);
   if(P().length && !draftSource().list.length) al.push(`<div class="bad">• Draft list not loaded — drafted players may show as available. ${IN_CLAUDE?"Sync in ⚙️ Setup &amp; Data.":"⚙️ Setup &amp; Data → Refresh player data."}</div>`);
   if(rsGap>0) al.push(`<div class="${rsGap>=t.slots?"bad":rsGap>=t.slots-1?"warn":"mut"}">• Need ${rsGap} more Rising Star${rsGap>1?"s":""} for the RSM opener (8 in the XII)${rsGap>=t.slots?" — every remaining slot must be a Rising Star":""}.</div>`);
   else al.push(`<div class="ok">• Rising Star requirement for the RSM match met.</div>`);
@@ -939,7 +940,7 @@ async function syncSheet(){
     const [ids, dist, teams, qual, status, rate, pref, legacy, owner, psId, psType, psStats] = await Promise.all([
       sheetRange("Registrations!B2:C400"), sheetRange("Registrations!F2:F400"), sheetRange("Registrations!K2:BA400"),
       sheetRange("Registrations!BF2:BF400"), sheetRange("Registrations!BH2:BH400"), sheetRange("Registrations!BK2:BL400"),
-      sheetRange("Registrations!BP2:BP400"), sheetRange("Registrations!BV2:BV400"), sheetRange("Registrations!BX2:BX400"),
+      sheetRange("Registrations!BP2:BP400"), sheetRange("Registrations!BU2:BU400"), sheetRange("Registrations!BX2:BX400"),
       sheetRange("'Player Stats'!A2:A400"), sheetRange("'Player Stats'!J2:J400"), sheetRange("'Player Stats'!M2:Z400")
     ]);
     try{ const [ds,ap]=await Promise.all([sheetRange("'Draft Submissions'!A1:F100"), sheetRange("'Auction Pool'!A2:A400")]);
@@ -949,21 +950,16 @@ async function syncSheet(){
       applyMeta({draftFinal:fin, pool});
     }catch(e){}
     const stats={}; psId.forEach((r,i)=>{ const id=(r[0]||"").trim(); if(!id) return; const v=psStats[i]||[];
-      stats[id]={mvp:num(v[0]),mvpM:num(v[1]),m:num(v[2]),runs:num(v[3]),avg:num(v[4]),hs:num(v[5]),f4:num(v[6]),s6:num(v[7]),f50:num(v[8]),h100:num(v[9]),wk:num(v[10]),ov:overs(v[11]),ct:num(v[13]),type:(psType[i]||[])[0]||""}; });
-    let n=0;
+      stats[id]={mvp:v[0],mvpM:v[1],m:v[2],runs:v[3],avg:v[4],hs:v[5],f4:v[6],s6:v[7],f50:v[8],h100:v[9],wk:v[10],ov:v[11],ct:v[13],type:(psType[i]||[])[0]||""}; });
+    const list=[];
     ids.forEach((r,i)=>{
       const id=(r[0]||"").trim(); if(!/^KNPL7-/.test(id)) return;
       const t=teams[i]||[]; const lt={}; LEAGUE_COLS.forEach((L,k)=>{ const v=(t[k*3]||"").trim(); if(v) lt[L]=v; });
-      const st=(status[i]||[])[0]||"";
-      const rec={ id, name:(r[1]||"").trim(), district:((dist[i]||[])[0]||"").trim(), leagues:lt, qual:(qual[i]||[])[0]||"",
-        regStatus:st, rating:Math.round(num((rate[i]||[])[0]))||0, cat:catCode((rate[i]||[])[1]||""), prefTeam:((pref[i]||[])[0]||"").trim(),
-        legacy:(legacy[i]||[])[0]||"", ownerOf:((owner[i]||[])[0]||"").trim(), stats:stats[id]||null };
-      const old=S.players[id];
-      if(old){ ["name","district","leagues","qual","regStatus","prefTeam","legacy","ownerOf","stats"].forEach(k=>old[k]=rec[k]); if(rec.rating) old.rating=rec.rating; if(rec.cat!=="NA") old.cat=rec.cat; if(!old.base) old.base=catBase(old.cat); }
-      else S.players[id]={...rec, base:catBase(rec.cat), team:"", price:0, star:0, note:""};
-      n++;
+      list.push({ id, name:(r[1]||"").trim(), district:((dist[i]||[])[0]||"").trim(), leagues:lt, qual:(qual[i]||[])[0]||"",
+        regStatus:(status[i]||[])[0]||"", rating:(rate[i]||[])[0], cat:(rate[i]||[])[1]||"", prefTeam:((pref[i]||[])[0]||"").trim(),
+        legacy:(legacy[i]||[])[0]||"", ownerOf:((owner[i]||[])[0]||"").trim(), stats:stats[id]||null });
     });
-    S.syncedAt=Date.now(); applySeed(); persist(); buildIntel(); renderAll();
+    const n=applyPlayers(list);
     msg.innerHTML=`<span class="ok">${n} registrations synced with CricHeroes stats · ${new Date().toLocaleString('en-IN')}</span>`;
   }catch(e){ msg.innerHTML=`<span class="bad">Couldn't read the sheet (${esc(e?.code||e?.message||"error")}). If asked, allow the page to use Google Sheets, then try again.</span>`; }
 }
@@ -998,15 +994,20 @@ function trimDrafts(){
     list.forEach(p=>{ if(chosen.length<3 && draftValid([...chosen,p])) chosen.push(p); else { p.draftDropped=p.draftTeam; delete p.draftTeam; } });
   });
 }
-function isAvail(p){ return !p.team && !p.isOwner && !p.draftTeam && p.inPool!==false && !/reject/i.test(p.regStatus||""); }
+function isAvail(p){ return !p.team && !p.isOwner && !p.draftTeam && p.inPool!==false && !/reject/i.test(p.regStatus||"") && !(p.rating===0 && RATED()); }
+function RATED(){ return P().some(q=>q.rating>0); }
 function applyMeta(j){
   if(Array.isArray(j.draftProbable)) S.draftProbable=j.draftProbable;
   S.draftFinal = Array.isArray(j.draftFinal) && j.draftFinal.length ? j.draftFinal : null;
   S.poolIds = Array.isArray(j.pool) && j.pool.length ? j.pool : null;
 }
 function dataStatusHTML(){
-  const src=draftSource();
-  return `Draft list: <b>${src.label}</b>${src.final?"":" · switches to confirmed drafts automatically once teams submit"} · Auction pool: <b>${S.poolIds?`final (${S.poolIds.length} players)`:"not published yet — all approved registrations considered"}</b>`;
+  const src=draftSource(), L=S.lastChanges;
+  const catN={CV:'Conqueror Vanguard',CC:'Conqueror Core',DA:'Dominator Apex',DC:'Dominator Core',RSE:'Rising Star Elite',RSC:'Rising Star Core'};
+  const chg = L? `<div class="card" style="margin-top:10px;border-color:var(--gold)"><b>Last refresh ${new Date(L.at).toLocaleString('en-IN')}</b> — stats updated for ${L.stats} players · ${L.rating.length} Skill Rating changes · ${L.cat.length} category changes${L.added?` · ${L.added} new`:''}${L.removed.length?` · removed: ${L.removed.map(esc).join(', ')}`:''}
+    ${L.cat.length?`<div style="margin-top:6px"><b>Category changes:</b> ${L.cat.map(([id,n,a,b])=>`${esc(n)} (${catN[a]||a} → <b>${catN[b]||b}</b>)`).join(' · ')}</div>`:''}
+    ${L.rating.length?`<details style="margin-top:6px"><summary>Skill Rating changes (${L.rating.length})</summary><div class="mut" style="font-size:12px">${L.rating.sort((x,y)=>Math.abs(y[3]-y[2])-Math.abs(x[3]-x[2])).map(([id,n,a,b])=>`${esc(n)} ${a}→<b>${b}</b>`).join(' · ')}</div></details>`:''}</div>` : '';
+  return chg + `Data last refreshed: <b>${S.syncedAt?new Date(S.syncedAt).toLocaleString('en-IN'):'never'}</b> · Draft list: <b>${src.label}</b>${src.final?"":" · switches to confirmed drafts automatically once teams submit"} · Auction pool: <b>${S.poolIds?`final (${S.poolIds.length} players)`:"not published yet — all approved registrations considered"}</b>`;
 }
 function ownerTeamOf(p){ return p.ownerOf || ""; }
 function teamCore(team){ // owner + drafted + bought
@@ -1670,17 +1671,26 @@ function renderHero(){
 
 /* ---- Data connection outside Claude (GitHub Pages) via Apps Script ---- */
 function applyPlayers(list){
-  let n=0;
+  let n=0; const ch={rating:[],cat:[],stats:0,added:0,removed:[]}; const seen=new Set(); const hadData=P().length>0;
   list.forEach(r=>{
     const id=String(r.id||"").trim(); if(!/^KNPL7-/.test(id)) return;
     const st=r.stats? {mvp:num(r.stats.mvp),mvpM:num(r.stats.mvpM),m:num(r.stats.m),runs:num(r.stats.runs),avg:num(r.stats.avg),hs:num(r.stats.hs),f4:num(r.stats.f4),s6:num(r.stats.s6),f50:num(r.stats.f50),h100:num(r.stats.h100),wk:num(r.stats.wk),ov:overs(r.stats.ov),ct:num(r.stats.ct),type:r.stats.type||""} : null;
     const rec={id,name:String(r.name||"").trim(),district:String(r.district||"").trim(),leagues:r.leagues||{},qual:r.qual||"",regStatus:r.regStatus||"",
       rating:Math.round(num(r.rating))||0,cat:catCode(r.cat||""),prefTeam:String(r.prefTeam||"").trim(),legacy:r.legacy||"",ownerOf:String(r.ownerOf||"").trim(),stats:st};
-    const old=S.players[id];
-    if(old){ ["name","district","leagues","qual","regStatus","prefTeam","legacy","ownerOf","stats"].forEach(k=>old[k]=rec[k]); if(rec.rating) old.rating=rec.rating; if(rec.cat!=="NA") old.cat=rec.cat; if(!old.base) old.base=catBase(old.cat); }
-    else S.players[id]={...rec, base:catBase(rec.cat), team:"", price:0, star:0, note:""};
+    const old=S.players[id]; seen.add(id);
+    if(old){
+      if(JSON.stringify(old.stats)!==JSON.stringify(rec.stats)) ch.stats++;
+      ["name","district","leagues","qual","regStatus","prefTeam","legacy","ownerOf","stats"].forEach(k=>old[k]=rec[k]);
+      const hasR = r.rating!=="" && r.rating!=null;
+      if(hasR && old.rating!==rec.rating){ ch.rating.push({p:old,from:old.rating,to:rec.rating}); old.rating=rec.rating; }
+      if(rec.cat!=="NA" && old.cat!==rec.cat){ ch.cat.push({p:old,from:old.cat,to:rec.cat}); old.cat=rec.cat; old.base=catBase(rec.cat); }
+      if(!old.base) old.base=catBase(old.cat);
+    }
+    else { S.players[id]={...rec, base:catBase(rec.cat), team:"", price:0, star:0, note:""}; ch.added++; }
     n++;
   });
+  if(seen.size) Object.keys(S.players).forEach(id=>{ if(!seen.has(id) && !S.players[id].team){ ch.removed.push(S.players[id].name); delete S.players[id]; } });
+  if(hadData) S.lastChanges={at:Date.now(), rating:ch.rating.map(x=>[x.p.id,x.p.name,x.from,x.to]), cat:ch.cat.map(x=>[x.p.id,x.p.name,x.from,x.to]), stats:ch.stats, added:ch.added, removed:ch.removed};
   S.syncedAt=Date.now(); applySeed(); persist(); buildIntel(); renderAll();
   return n;
 }

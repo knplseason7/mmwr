@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>KNPL-7 Auctioneer Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#081530;--panel:#10234a;--panel2:#16305f;--line:#24427a;--ink:#fff;--mut:#a9b8d6;--gold:#ffb547;--green:#3fd08a;--red:#ff6b6b;--amber:#ffc24a;--teal:#3fd0b6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 Inter,sans-serif}
+header{display:flex;align-items:center;gap:14px;padding:10px 18px;background:#06102a;border-bottom:1px solid var(--line);flex-wrap:wrap}
+header img{width:46px;height:46px;border-radius:50%;background:#fff}
+header h1{margin:0;font:800 26px 'Barlow Condensed',sans-serif;letter-spacing:.5px}
+.sp{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-weight:600;font-size:13px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--mut)}
+.on .dot{background:#ff4d4d;animation:p 1.2s infinite}@keyframes p{50%{opacity:.35}}
+input,select,button{font:inherit;color:inherit}
+input[type=search]{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 12px;width:260px}
+select{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+button{background:var(--gold);color:#1a1205;border:0;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer}
+button.sec{background:var(--panel2);color:var(--ink);border:1px solid var(--line)}
+main{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:16px;padding:16px 18px}
+@media(max-width:1000px){main{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.mut{color:var(--mut)}
+.top{display:flex;gap:16px;align-items:flex-start}
+.ph{width:110px;height:140px;border-radius:10px;object-fit:cover;background:var(--panel2);flex:none}
+.nm{font:800 40px/1 'Barlow Condensed',sans-serif;margin:2px 0 6px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{border-radius:6px;padding:3px 10px;font-weight:700;font-size:13px;color:#10131a}
+.sr{font:800 34px/1 'Barlow Condensed',sans-serif}
+.bidbox{display:flex;gap:18px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:14px 0;flex-wrap:wrap}
+.bid{font:800 54px/1 'Barlow Condensed',sans-serif;color:var(--gold)}
+.lab{font-size:11px;letter-spacing:1.2px;text-transform:uppercase;color:var(--mut);font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin:12px 0}
+.stats div{background:var(--panel2);border-radius:10px;padding:8px 10px}
+.stats b{display:block;font:700 24px/1.1 'Barlow Condensed',sans-serif}
+ul.hl{margin:6px 0 0;padding-left:18px}ul.hl li{margin:4px 0}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--mut);text-align:left;padding:6px;border-bottom:1px solid var(--line)}
+td{padding:7px 6px;border-bottom:1px solid rgba(255,255,255,.06)}
+td.n,th.n{text-align:right}
+tr.lead td{background:rgba(255,181,71,.16)}
+tr.no td{opacity:.45}
+.ok{color:var(--green)}.bad{color:var(--red)}.warn{color:var(--amber)}
+.frozen{opacity:.55;transition:opacity .2s}
+.note{font-size:12px;color:var(--mut);margin-top:8px}
+details{margin-top:12px}summary{cursor:pointer;font-weight:600}
+.empty{padding:40px 10px;text-align:center;color:var(--mut)}
+.bm{display:inline-block;text-decoration:none}
+h3{margin:0 0 8px;font:700 20px 'Barlow Condensed',sans-serif;letter-spacing:.6px;text-transform:uppercase;color:var(--gold)}
+</style>
+</head>
+<body>
+<header>
+  <img src="../../knpl7/skill-rating/logo.png" alt="KNPL">
+  <h1>KNPL-7 MEGA AUCTION · AUCTIONEER DESK</h1>
+  <span class="sp"></span>
+  <button class="sec" id="liveStrip" style="display:none"></button>
+  <span class="pill" id="link"><span class="dot"></span><span id="linkTxt">Not linked</span></span>
+  <label class="mut">Round <select id="round"><option value="1">1</option><option value="2">2</option></select></label>
+  <label class="mut">Teams update after <select id="pause"><option>3</option><option selected>4</option><option>5</option></select> s pause</label>
+  <input type="search" id="q" placeholder="Search name or Reg No (e.g. 28)" list="names">
+  <datalist id="names"></datalist>
+</header>
+<main>
+  <section>
+    <div class="card" id="player"><div class="empty">Loading players…</div></div>
+  </section>
+  <section>
+    <div class="card"><h3>Teams</h3><div id="teamsHint" class="mut" style="font-size:13px"></div><div id="teams"></div></div>
+    <details class="card" style="margin-top:16px" id="setup">
+      <summary>Set up the live link to Super Player Auction</summary>
+      <ol class="mut">
+        <li>Drag this button to the Chrome bookmarks bar (one time): <a class="bm" id="bm" href="#"><button type="button">KNPL Auctioneer Link</button></a></li>
+        <li>Open the KNPL-7 auction <b>screen</b> on Super Player Auction in Chrome.</li>
+        <li>Click <b>KNPL Auctioneer Link</b> on the bookmarks bar. This desk opens in a new tab and follows the auction: player on the block, live bid, sales and team purses.</li>
+      </ol>
+      <div class="note">If the auction tab reloads, the link drops; click the bookmark again. You can always search any player by name or Reg No.</div>
+    </details>
+  </section>
+</main>
+<script>
+const SPA_ORIGIN="https://superplayerauction.com";
+const RULES={squad:14,cap:560,bonus:25,reserve:2000,lim:{C:1,D:3,DA:1,R:10,RSE:7,RSC:4,CD:6}};
+const CAT={"Conqueror Vanguard":["CV","C","#ffd166"],"Conqueror Core":["CC","C","#ffb547"],"Dominator Apex":["DA","D","#7fd1ff"],"Dominator Core":["DC","D","#a8c8ff"],"Rising Star Elite":["RSE","R","#8ef0b8"],"Rising Star Core":["RSC","R","#c9f2d8"]};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=n=>(+n||0).toLocaleString('en-IN');
+const norm=s=>String(s||"").toUpperCase().replace(/\(.*?\)/g,"").replace(/[^A-Z]/g,"");
+const normTeam=s=>norm(s).replace(/^THE/,"").replace(/MITHILAS/,"MIDHILAS").replace(/CHITRAKOOT/,"CHITHRAKOOT");
+let DATA=[], BYID={}, AVG_RSC=19;
+const ST={view:null,on:false,at:0,cur:null,curInfo:null,bid:0,bidteam:"",teams:{},squads:{},prev:null,bidding:false,timer:null,lastBidAt:0,frozenTeams:null};
+
+function step(v){ return v<2000?100: v<8000?200: v<10000?400:500; }
+function findPlayer(info){
+  if(!info) return null;
+  const txt=String(info.reg||"");
+  const m=txt.match(/KNPL7-?\s*0*(\d{1,4})/i)||txt.match(/Reg\.?\s*No\.?\s*:?\s*0*(\d{1,4})/i);
+  const n=norm(info.name);
+  if(m){ const p=BYID["KNPL7-"+m[1].padStart(4,"0")]; if(p){ const f=norm(p.n).slice(0,4); if(!n||n.includes(f)||norm(p.n).includes(n.slice(0,4))) return p; } }
+  return DATA.find(p=>norm(p.n)===n) || (n.length>5 && DATA.find(p=>norm(p.n).includes(n)||n.includes(norm(p.n)))) || null;
+}
+function catOf(c){ return CAT[c]||[c||"–","",""]; }
+
+/* ---------- player card ---------- */
+function renderPlayer(p, info){
+  const box=$('player');
+  if(!p){ box.innerHTML = info? `<div class="empty"><div class="nm">${esc(info.name||"Unknown player")}</div>Not found in the KNPL-7 Skill Rating list. Search by name or Reg No.</div>` : `<div class="empty">Waiting for the next player… or search above.</div>`; return; }
+  const [code,grp,col]=catOf(p.c), s=p.st;
+  const ph=p.ph?`<img class="ph" alt="" src="data:image/jpeg;base64,${p.ph}">`:`<div class="ph"></div>`;
+  const live = ST.cur===p && !!ST.curInfo; ST.view=p;
+  const bidHTML = live? `<div class="bidbox"><div><div class="lab">Current bid</div><div class="bid">${ST.bid?fmt(ST.bid):"–"}</div></div>
+     <div><div class="lab">Leading</div><div style="font:700 24px 'Barlow Condensed'">${esc(ST.bidteam||"No bid yet")}</div></div>
+     <div><div class="lab">Next bid</div><div style="font:700 24px 'Barlow Condensed'">${fmt((ST.bid||p.bt)+(ST.bid?step(ST.bid):0))}</div></div>
+     <div><div class="lab">Base point</div><div style="font:700 24px 'Barlow Condensed'">${fmt(p.bt)}</div></div></div>` :
+     `<div class="bidbox"><div><div class="lab">Base point</div><div class="bid">${fmt(p.bt)}</div></div><div class="mut">Base price ₹${fmt(p.bp)}</div></div>`;
+  const kn=p.seasons.filter(x=>x.t.startsWith("KNPL")), ql=p.seasons.filter(x=>!x.t.startsWith("KNPL"));
+  const srow=x=>`<tr><td>${esc(x.t)}</td><td>${esc(x.team)}</td><td class="n">${x.m}</td><td class="n">${x.mvp}</td><td class="n">${x.pom||""}</td><td>${x.res?`<b class="${x.res==='Champion'?'ok':''}">${x.res}</b>`:""}</td></tr>`;
+  box.innerHTML=`
+   <div class="top">${ph}<div style="flex:1;min-width:0">
+     <div class="mut">${esc(p.id)} · ${esc(p.d)}${p.style?` · ${esc(p.style)}`:""}</div>
+     <div class="nm">${esc(p.n)}</div>
+     <div class="chips"><span class="chip" style="background:${col}">${esc(p.c)}</span><span class="sr">${p.s}<span class="mut" style="font-size:16px"> / 100 Skill Rating</span></span><span class="pill">${esc(p.role)}</span>${p.f?'<span class="pill" style="color:var(--teal);border-color:var(--teal)">NPL-5</span>':""}</div>
+   </div></div>
+   ${bidHTML}
+   <div class="lab">Last 3 seasons · KNPL + qualifying leagues</div>
+   <div class="stats">
+     <div><span class="lab">Matches</span><b>${s.m}</b></div><div><span class="lab">Runs</span><b>${fmt(s.runs)}</b></div><div><span class="lab">Bat avg</span><b>${s.avg}</b></div>
+     <div><span class="lab">Best</span><b>${s.hs}</b></div><div><span class="lab">6s / 4s</span><b>${s.s6} / ${s.f4}</b></div><div><span class="lab">50s / 100s</span><b>${s.h50} / ${s.h100}</b></div>
+     <div><span class="lab">Wickets</span><b>${s.wk}</b></div><div><span class="lab">Overs</span><b>${s.ov}</b></div><div><span class="lab">Catches</span><b>${s.ct}</b></div>
+     <div><span class="lab">MVP points</span><b>${s.mvp}</b></div><div><span class="lab">Player of Match</span><b>${s.pom}</b></div><div><span class="lab">Last KNPL sale</span><b>${p.sales.length?fmt(p.sales[p.sales.length-1].pts):"–"}</b></div>
+   </div>
+   <h3>Highlights</h3>
+   <ul class="hl">${p.hl.map(h=>`<li>${esc(h)}</li>`).join("")}${p.sales.map(x=>`<li>${esc(x.a)}: sold to ${esc(x.team)} for ${fmt(x.pts)} points.</li>`).join("")}</ul>
+   <details ${kn.length?"open":""}><summary>KNPL seasons (${kn.length})</summary>${kn.length?`<table><tr><th>Season</th><th>Team</th><th class="n">M</th><th class="n">MVP</th><th class="n">PoM</th><th></th></tr>${kn.map(srow).join("")}</table>`:'<div class="mut">New to KNPL (no KNPL-4 to KNPL-6 matches).</div>'}</details>
+   <details><summary>Qualifying leagues (${ql.length} seasons)</summary><table><tr><th>Season</th><th>Team</th><th class="n">M</th><th class="n">MVP</th><th class="n">PoM</th><th></th></tr>${ql.map(srow).join("")}</table></details>
+   <div class="note">Highlights are generated automatically from the player's CricHeroes data (KNPL-4 to 6 and qualifying leagues, NPL-5 included) and the KNPL-7 Skill Rating.</div>`;
+}
+
+/* ---------- teams ---------- */
+function teamRows(){
+  const p=ST.view, round=+$('round').value;
+  const names=Object.keys(ST.teams);
+  return names.map(t=>{
+    const live=ST.teams[t], sq=ST.squads[t]||[];
+    const k={C:0,D:0,R:0,CV:0,CC:0,DA:0,DC:0,RSE:0,RSC:0}; let rat=0;
+    sq.forEach(x=>{ const [code,g]=catOf(x.c); if(g)k[g]++; if(k[code]!=null)k[code]++; rat+=x.s||0; });
+    const n=live.n!=null?live.n:sq.length, places=Math.max(0,RULES.squad-n), purse=live.rm;
+    const maxBid=places>0? purse-RULES.reserve*(places-1) : 0;
+    let ok=places>0, why=places>0?"":"Squad full";
+    let ratTxt="", ratCls="";
+    if(p){
+      const [code,g]=catOf(p.c);
+      if(ok && round===1){ const kk={...k}; kk[g]++; if(kk[code]!=null)kk[code]++;
+        const L=RULES.lim;
+        if(kk.C>L.C) {ok=false;why="Conqueror limit";} else if(kk.D>L.D){ok=false;why="Dominator limit";} else if(kk.DA>L.DA){ok=false;why="Apex limit";}
+        else if(kk.R>L.R){ok=false;why="Rising Star limit";} else if(kk.RSE>L.RSE){ok=false;why="Elite limit";} else if(kk.RSC>L.RSC){ok=false;why="Core limit";} else if(kk.C+kk.D>L.CD){ok=false;why="C+D limit";} }
+      const need=rat+p.s+AVG_RSC*Math.max(0,places-1);
+      if(need<=RULES.cap){ ratTxt=`${RULES.cap-rat}`; ratCls="ok"; }
+      else if(need<=RULES.cap+RULES.bonus){ ratTxt=`${RULES.cap-rat} · bonus`; ratCls="warn"; }
+      else { ratTxt=`${RULES.cap-rat}`; ratCls="bad"; if(ok){ok=false;why="Skill Rating cap";} }
+      const bidNow=Math.max(ST.bid, p.bt);
+      if(ok && maxBid<bidNow){ ok=false; why="Points"; }
+    } else ratTxt=`${RULES.cap-rat}`;
+    return {t,n,places,purse,maxBid,ok,why,ratTxt,ratCls,k};
+  }).sort((a,b)=>(b.ok-a.ok)||(b.maxBid-a.maxBid));
+}
+function renderTeams(force){
+  const box=$('teams'), hint=$('teamsHint');
+  if(!Object.keys(ST.teams).length){ box.innerHTML='<div class="empty">Team purses appear here once the live link is on.</div>'; hint.textContent=""; return; }
+  if(ST.bidding && !force){ box.classList.add('frozen'); hint.innerHTML=`<b class="warn">Bidding in progress…</b> team data refreshes when bids pause for ${$('pause').value} s.`; return; }
+  box.classList.remove('frozen');
+  const rows=teamRows(), lead=normTeam(ST.bidteam), p=ST.view;
+  const can=rows.filter(r=>r.ok).length;
+  hint.innerHTML = p? `<b>${can}</b> team${can===1?"":"s"} can bid for this ${esc(catOf(p.c)[0])} player${$('round').value==="1"?" (Round 1 limits on)":" (Round 2: no category limits)"}.` : "";
+  box.innerHTML=`<table><tr><th>Team</th><th class="n">Players</th><th class="n">Points left</th><th class="n">Max bid</th><th class="n">SR room</th><th>Can bid</th></tr>
+   ${rows.map(r=>`<tr class="${normTeam(r.t)===lead&&lead?'lead':''} ${r.ok?'':'no'}"><td><b>${esc(r.t)}</b><div class="mut" style="font-size:11px">C ${r.k.C} · D ${r.k.D} · RS ${r.k.R}</div></td><td class="n">${r.n}/${RULES.squad}</td><td class="n">${fmt(r.purse)}</td><td class="n"><b>${fmt(Math.max(0,r.maxBid))}</b></td><td class="n ${r.ratCls}">${r.ratTxt}</td><td>${r.ok?'<b class="ok">Yes</b>':`<span class="bad">${esc(r.why)}</span>`}</td></tr>`).join("")}</table>
+   <div class="note">Max bid keeps ${fmt(RULES.reserve)} points for each other empty place. SR room = ${RULES.cap} cap minus the squad's Skill Ratings; "bonus" means the player fits only with the one-time +${RULES.bonus}. Squads and categories come from the auction platform; check any doubtful case against the official rules.</div>`;
+}
+
+/* ---------- live link ---------- */
+function onBid(){
+  ST.bidding=true; ST.lastBidAt=Date.now(); clearTimeout(ST.timer);
+  ST.timer=setTimeout(()=>{ ST.bidding=false; renderTeams(true); }, (+$('pause').value)*1000);
+  renderTeams();
+}
+function addToSquad(team, p, info){
+  const key=Object.keys(ST.teams).find(t=>normTeam(t)===normTeam(team))||team;
+  const sq=ST.squads[key]||(ST.squads[key]=[]);
+  const id=p?p.id:("SPA-"+(info&&info.pcode));
+  if(!sq.some(x=>x.id===id)) sq.push(p?{id:p.id,c:p.c,s:p.s}:{id,c:info&&info.cat,s:0});
+}
+function handle(m){
+  ST.on=true; ST.at=Date.now(); $('link').classList.add('on'); $('linkTxt').textContent="LIVE · Super Player Auction";
+  if(m.type==="init"){
+    ST.squads={};
+    (m.teams||[]).forEach(t=>{ if(!ST.teams[t]) ST.teams[t]={rm:0,n:null}; });
+    (m.players||[]).forEach(x=>{ if(x.team) addToSquad(x.team, findPlayer(x), x); });
+    renderTeams(true); return;
+  }
+  if(m.type!=="live") return;
+  if(ST.prev && m.teams){ Object.entries(m.teams).forEach(([t,v])=>{ const pv=ST.prev[t]; if(pv && v.n>pv.n && ST.curInfo) addToSquad(t, ST.cur, ST.curInfo); }); }
+  if(m.teams){ Object.entries(m.teams).forEach(([t,v])=>{ ST.teams[t]={rm:v.rm,n:v.n}; }); ST.prev=m.teams; }
+  const newPlayer = (m.player&&m.player.pcode)!==(ST.curInfo&&ST.curInfo.pcode);
+  const bidChanged = (m.bid||0)!==ST.bid || (m.bidteam||"")!==ST.bidteam;
+  ST.bid=m.bid||0; ST.bidteam=m.bidteam||"";
+  if(newPlayer){ ST.curInfo=m.player||null; ST.cur=findPlayer(m.player); clearTimeout(ST.timer); ST.bidding=false; renderPlayer(ST.cur, ST.curInfo); renderTeams(true); renderStrip(); return; }
+  if(bidChanged){ if(ST.cur && ST.view===ST.cur) renderPlayer(ST.cur, ST.curInfo); if(ST.bid) onBid(); }
+  renderStrip();
+}
+window.addEventListener('message',e=>{ if(e.origin!==SPA_ORIGIN||!e.data||!e.data.knplauc) return; try{handle(e.data);}catch(err){console.log(err);} });
+setInterval(()=>{ if(ST.on && Date.now()-ST.at>15000){ ST.on=false; $('link').classList.remove('on'); $('linkTxt').textContent="Link lost — click the bookmark again"; } },5000);
+
+/* ---------- search ---------- */
+function search(){
+  const v=$('q').value.trim(); if(!v) return;
+  const id=v.match(/^(?:KNPL7-?)?0*(\d{1,4})\b/i);
+  let p= id? BYID["KNPL7-"+id[1].padStart(4,"0")] : null;
+  if(!p){ const n=norm(v.replace(/^KNPL7-\d+\s*·\s*/,"")); p=DATA.find(x=>norm(x.n)===n)||DATA.find(x=>norm(x.n).includes(n)); }
+  if(p){ renderPlayer(p); renderTeams(true); renderStrip(); }
+}
+$('q').addEventListener('change',search); $('q').addEventListener('keydown',e=>{ if(e.key==="Enter") search(); });
+$('round').onchange=()=>renderTeams(true);
+function renderStrip(){ const b=$('liveStrip'); if(!ST.curInfo || ST.view===ST.cur){ b.style.display='none'; return; }
+  b.style.display=''; b.textContent=`● On the block: ${ST.cur?ST.cur.n:(ST.curInfo.name||'')} · ${ST.bid?fmt(ST.bid)+' '+ST.bidteam:'no bid'} — show`; }
+$('liveStrip').onclick=()=>{ if(ST.curInfo){ renderPlayer(ST.cur, ST.curInfo); renderTeams(true); renderStrip(); } };
+
+/* ---------- bookmark (runs on the Super Player Auction screen) ---------- */
+const BM=function(){
+  var DESK='https://knplseason7.github.io';
+  if(!window.firebase||typeof actid==='undefined'||typeof player==='undefined'){alert('Open the Super Player Auction screen of the KNPL-7 auction first, then click this bookmark.');return;}
+  var W=window.open(DESK+'/mmwr/auctioneer/','knplauc');
+  var arr=function(x){return Array.isArray(x)?x:Object.values(x||{});};
+  var P=arr(player),T=arr(teams),C=arr(category),tn={},cn={},pc={};
+  T.forEach(function(t){tn[t.tid]=t.name;});C.forEach(function(c){cn[c.cid]=c.cname;});P.forEach(function(p){pc[p.pcode]=p;});
+  function info(code){var p=pc[code];return p?{pcode:code,name:p.pname,reg:String(p.boller||'')+' '+String(p.detail||'')+' '+String(p.fname||''),cat:cn[p.isstarb]||''}:{pcode:code};}
+  function send(m){try{if(W&&!W.closed)W.postMessage(m,DESK);}catch(e){}}
+  var squads=P.filter(function(p){return p.tmid&&tn[p.tmid];}).map(function(p){var i=info(p.pcode);i.team=tn[p.tmid];return i;});
+  var last=null;
+  firebase.database().ref('auction/'+actid).on('value',function(s){var v=s.val()||{},tl=v.teamlist||{},ts={};
+    Object.keys(tl).forEach(function(k){ts[tn[k]||k]={rm:+tl[k].rmpoint||0,n:+tl[k].tplayer||0};});
+    last={knplauc:1,type:'live',player:v.pcode?info(v.pcode):null,bid:+v.bidpoint||0,bidteam:tn[v.bidteam]||'',sold:v.soldout||0,teams:ts};send(last);});
+  var tick=0;setInterval(function(){tick++;if(tick%5===1)send({knplauc:1,type:'init',teams:T.map(function(t){return t.name;}),players:squads});if(last)send(last);},1000);
+  var b=document.createElement('div');b.textContent='KNPL Auctioneer Link ON';b.style.cssText='position:fixed;left:10px;bottom:10px;z-index:99999;background:#ffb547;color:#1a1205;font:700 13px sans-serif;padding:6px 10px;border-radius:8px';document.body.appendChild(b);
+};
+$('bm').href='javascript:'+encodeURIComponent('('+BM.toString()+')()');
+$('bm').onclick=e=>{ e.preventDefault(); alert('Drag this button to your bookmarks bar, then click it on the Super Player Auction screen.'); };
+
+/* ---------- load ---------- */
+fetch('data.json',{cache:'no-cache'}).then(r=>r.json()).then(j=>{
+  DATA=j.players; DATA.forEach(p=>BYID[p.id]=p);
+  const r=DATA.filter(p=>p.c==="Rising Star Core").map(p=>p.s); if(r.length) AVG_RSC=Math.round(r.reduce((a,b)=>a+b,0)/r.length);
+  $('names').innerHTML=DATA.map(p=>`<option value="${esc(p.id.slice(6)+' · '+p.n)}">`).join("");
+  renderPlayer(null); renderTeams();
+  if(location.hash.length>1){ $('q').value=decodeURIComponent(location.hash.slice(1)); search(); }
+}).catch(()=>{ $('player').innerHTML='<div class="empty">Could not load player data. Check the internet connection and reload.</div>'; });
+</script>
+</body>
+</html>

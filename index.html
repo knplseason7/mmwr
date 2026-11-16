@@ -972,7 +972,8 @@ function draftSource(){
 }
 function applySeed(){
   const src=draftSource();
-  P().forEach(p=>{ delete p.draftTeam; p.isOwner=!!p.ownerOf; p.inPool = S.poolIds ? S.poolIds.includes(p.id) : true; });
+  const fin=poolFinal();
+  P().forEach(p=>{ delete p.draftTeam; p.isOwner=!!p.ownerOf; p.joined = S.poolIds ? S.poolIds.includes(p.id) : null; p.inPool = (S.poolIds && fin) ? p.joined : true; });
   src.list.forEach(([id,t,team])=>{ const p=S.players[id]; if(!p) return; if(String(t).toUpperCase()==="OWNER"){ p.isOwner=true; if(team && !p.ownerOf) p.ownerOf=team; } else p.draftTeam=t; });
   P().forEach(p=>{ p.base = BASE_PT[p.cat] || p.base || 2000; delete p.draftDropped; });
   if(!src.final) trimDrafts();
@@ -994,6 +995,8 @@ function trimDrafts(){
     list.forEach(p=>{ if(chosen.length<3 && draftValid([...chosen,p])) chosen.push(p); else { p.draftDropped=p.draftTeam; delete p.draftTeam; } });
   });
 }
+// The Auction Pool tab fills up during Phase 2; it only limits who is available once the final pool is published (30 Nov) or marked final in Setup.
+function poolFinal(){ return !!S.cfg.poolFinal || Date.now() >= Date.parse('2026-11-30T00:00:00+05:30'); }
 function isAvail(p){ return !p.team && !p.isOwner && !p.draftTeam && p.inPool!==false && !/reject/i.test(p.regStatus||"") && !(p.rating===0 && RATED()); }
 function RATED(){ return P().some(q=>q.rating>0); }
 function applyMeta(j){
@@ -1007,7 +1010,8 @@ function dataStatusHTML(){
   const chg = L? `<div class="card" style="margin-top:10px;border-color:var(--gold)"><b>Last refresh ${new Date(L.at).toLocaleString('en-IN')}</b> — stats updated for ${L.stats} players · ${L.rating.length} Skill Rating changes · ${L.cat.length} category changes${L.added?` · ${L.added} new`:''}${L.removed.length?` · removed: ${L.removed.map(esc).join(', ')}`:''}
     ${L.cat.length?`<div style="margin-top:6px"><b>Category changes:</b> ${L.cat.map(([id,n,a,b])=>`${esc(n)} (${catN[a]||a} → <b>${catN[b]||b}</b>)`).join(' · ')}</div>`:''}
     ${L.rating.length?`<details style="margin-top:6px"><summary>Skill Rating changes (${L.rating.length})</summary><div class="mut" style="font-size:12px">${L.rating.sort((x,y)=>Math.abs(y[3]-y[2])-Math.abs(x[3]-x[2])).map(([id,n,a,b])=>`${esc(n)} ${a}→<b>${b}</b>`).join(' · ')}</div></details>`:''}</div>` : '';
-  return chg + `Data last refreshed: <b>${S.syncedAt?new Date(S.syncedAt).toLocaleString('en-IN'):'never'}</b> · Draft list: <b>${src.label}</b>${src.final?"":" · switches to confirmed drafts automatically once teams submit"} · Auction pool: <b>${S.poolIds?`final (${S.poolIds.length} players)`:"not published yet — all approved registrations considered"}</b>`;
+  return chg + `Data last refreshed: <b>${S.syncedAt?new Date(S.syncedAt).toLocaleString('en-IN'):'never'}</b> · Draft list: <b>${src.label}</b>${src.final?"":" · switches to confirmed drafts automatically once teams submit"} · Auction pool: <b>${!S.poolIds?"no one joined yet — all approved registrations considered": poolFinal()?`final (${S.poolIds.length} players)`:`${S.poolIds.length} joined so far — everyone approved still considered until the pool is final (30 Nov)`}</b>
+   <label style="display:inline-flex;gap:6px;align-items:center;margin-left:8px"><input type="checkbox" id="poolFinalChk" ${S.cfg.poolFinal?"checked":""}> Treat the Auction Pool list as final now</label>`;
 }
 function ownerTeamOf(p){ return p.ownerOf || ""; }
 function teamCore(team){ // owner + drafted + bought
@@ -1532,7 +1536,7 @@ function marketCard(p){
   if(!INTEL.pct.rpm) buildIntel();
   const pr=profile(p), sp=simPay(p), f=p.stats?mmFit(p):{score:0,why:[]}, s=p.stats, base=BASE_PT[p.cat]||2000;
   const st=s?`${s.m} matches · ${s.runs} runs @ ${s.avg||"–"} (HS ${s.hs}) · 6s ${s.s6} · ${s.wk} wkts in ${s.ov.toFixed(1)} ov · ${s.ct} catches · MVP ${(pr.d.mvpPM).toFixed(2)}/match`:"No stats";
-  const status = p.team?`Sold to ${p.team} for ${fmt(p.price)}`: p.isOwner?`Owner of ${p.ownerOf}`: p.draftTeam?`Probable draft: ${p.draftTeam}`: p.inPool===false?"Not in final pool":"Available";
+  const status = p.team?`Sold to ${p.team} for ${fmt(p.price)}`: p.isOwner?`Owner of ${p.ownerOf}`: p.draftTeam?`Probable draft: ${p.draftTeam}`: p.inPool===false?"Not in final pool": (p.joined===false?"Available · not joined the auction yet":"Available");
   const inPlan=(S.myPlan||[]).includes(p.id);
   return `<div class="card" style="border-color:var(--gold)">
     <div class="row" style="align-items:flex-start;gap:18px">
@@ -1636,6 +1640,7 @@ document.addEventListener('click',e=>{
   if(e.target.id==='tbStar'){ const core=teamCore(MY); const items=tbItems(tbPlan()); const pl=S.cfg.purse-core.reduce((a,q)=>a+(q.team?(q.price||0):draftPoint(q)),0); if(items.length){ simulatePlan(items,pl,0.8); items.forEach(x=>{ x.p.star=3; x.p.myVal=x.max; }); persist(); renderPool(); toast(`${items.length} targets set with walk-away prices`); } }
 });
 
+document.addEventListener('change',e=>{ if(e.target.id==='poolFinalChk'){ S.cfg.poolFinal=e.target.checked; applySeed(); persist(); renderAll(); toast(e.target.checked?"Only players in the Auction Pool list are available now":"All approved players considered until the pool is final"); } });
 $('tbGo').onclick=tbSearch; $('tbSearch').addEventListener('change',tbSearch); $('tbSearch').addEventListener('keydown',e=>{ if(e.key==='Enter') tbSearch(); });
 document.querySelector('nav button[data-v=tb]').addEventListener('click',()=>{ $('tbPlan').innerHTML='<div class="mut">🎲 Simulating…</div>'; setTimeout(renderTeamBuilder,20); });
 /* ================= AUCTION MODE UI + GITHUB MODE ================= */

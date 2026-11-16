@@ -223,7 +223,8 @@ body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{displ
     <div id="tbCard" style="margin-top:12px"></div>
   </div>
   <div class="card" style="margin-top:14px">
-    <h3>My team plan (14)</h3>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3 style="margin:0">My team plan (14)</h3><button class="btn" id="tbShare">📤 Share plan</button></div>
+    <div id="simBanner" style="margin:10px 0"></div>
     <div id="tbPlan"></div>
   </div>
 </section>
@@ -688,6 +689,7 @@ function renderDash(){
     return `<div class="catbox"><div class="mut" style="font-size:12px">${GNAME[g]}</div><div class="v" style="color:var(--${g==="C"?"cq":g==="D"?"dm":"rs"})">${t.g[g]}${lim?`<span class="mut" style="font-size:16px"> / ${lim}</span>`:""}</div></div>`;}).join("")}</div>`;
 
   const al=[];
+  if(P().length && simOn()) al.push(`<div class="warn" style="color:var(--gold2)">• <b>Simulation mode is on</b>: all pool players can be picked (other teams' probable drafts released, Phase 2 ignored). Turn it off in 🧩 Team Builder once final drafts and pool are out.</div>`);
   if(P().length && S.syncedAt && Date.now()-S.syncedAt>12*3600*1000) al.push(`<div class="warn">• Player data was last refreshed ${new Date(S.syncedAt).toLocaleString('en-IN')}. ${IN_CLAUDE?"Sync in ⚙️ Setup &amp; Data":"⚙️ Setup &amp; Data → Refresh player data"} to pick up the latest ratings and stats.</div>`);
   if(P().length && !draftSource().list.length) al.push(`<div class="bad">• Draft list not loaded — drafted players may show as available. ${IN_CLAUDE?"Sync in ⚙️ Setup &amp; Data.":"⚙️ Setup &amp; Data → Refresh player data."}</div>`);
   if(rsGap>0) al.push(`<div class="${rsGap>=t.slots?"bad":rsGap>=t.slots-1?"warn":"mut"}">• Need ${rsGap} more Rising Star${rsGap>1?"s":""} for the RSM opener (8 in the XII)${rsGap>=t.slots?" — every remaining slot must be a Rising Star":""}.</div>`);
@@ -977,7 +979,10 @@ function applySeed(){
   src.list.forEach(([id,t,team])=>{ const p=S.players[id]; if(!p) return; if(String(t).toUpperCase()==="OWNER"){ p.isOwner=true; if(team && !p.ownerOf) p.ownerOf=team; } else p.draftTeam=t; });
   P().forEach(p=>{ p.base = BASE_PT[p.cat] || p.base || 2000; delete p.draftDropped; });
   if(!src.final) trimDrafts();
+  // Simulation mode: every pool player can be picked, except Madhura Mavericks' own drafts (Phase 2 joining and other teams' drafts ignored)
+  if(simOn()){ P().forEach(p=>{ delete p.simReleased; if(p.draftTeam && normTeam(p.draftTeam)!==normTeam(MY)){ p.simReleased=p.draftTeam; delete p.draftTeam; } p.inPool=true; }); }
 }
+function simOn(){ return S.cfg.simMode!=null ? !!S.cfg.simMode : !draftSource().final; }
 /* Draft rule: up to 3 incl. owner; max 1 Conqueror, 2 Dominators, not 2 Dominator Apex; with 3 players at least 1 Rising Star.
    When the probable list names more, keep the highest-category valid picks. */
 function draftValid(set){
@@ -1536,7 +1541,7 @@ function marketCard(p){
   if(!INTEL.pct.rpm) buildIntel();
   const pr=profile(p), sp=simPay(p), f=p.stats?mmFit(p):{score:0,why:[]}, s=p.stats, base=BASE_PT[p.cat]||2000;
   const st=s?`${s.m} matches · ${s.runs} runs @ ${s.avg||"–"} (HS ${s.hs}) · 6s ${s.s6} · ${s.wk} wkts in ${s.ov.toFixed(1)} ov · ${s.ct} catches · MVP ${(pr.d.mvpPM).toFixed(2)}/match`:"No stats";
-  const status = p.team?`Sold to ${p.team} for ${fmt(p.price)}`: p.isOwner?`Owner of ${p.ownerOf}`: p.draftTeam?`Probable draft: ${p.draftTeam}`: p.inPool===false?"Not in final pool": (p.joined===false?"Available · not joined the auction yet":"Available");
+  const status = p.team?`Sold to ${p.team} for ${fmt(p.price)}`: p.isOwner?`Owner of ${p.ownerOf}`: p.draftTeam?`Probable draft: ${p.draftTeam}`: p.inPool===false?"Not in final pool": p.simReleased?`Available in simulation · probable draft of ${p.simReleased}`: (p.joined===false?"Available · not joined the auction yet":"Available");
   const inPlan=(S.myPlan||[]).includes(p.id);
   return `<div class="card" style="border-color:var(--gold)">
     <div class="row" style="align-items:flex-start;gap:18px">
@@ -1585,8 +1590,15 @@ function altHTML(p, swapId){
      <td>${swapId?`<button class="btn sm" data-tbswap="${esc(swapId)}|${esc(a.p.id)}">Swap in</button>`:(isAvail(a.p)&&!(S.myPlan||[]).includes(a.p.id)?`<button class="btn sm sec" data-tbadd="${esc(a.p.id)}">+ Add</button>`:"")}</td></tr>`;}).join("")}</table>
    <div class="explain">Match = how close his batting, bowling, MVP and fielding profile, role, category and rating are. Only players who keep your plan within the Skill Rating cap and Round 1 limits are shown.</div></div>`;
 }
+function simBannerHTML(){
+  const on=simOn(), rel=P().filter(p=>p.simReleased).length, open=P().filter(isAvail).length;
+  return `<div class="verdict ${on?'v-care':'v-go'}" style="margin:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+    <label style="display:inline-flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="simChk" ${on?"checked":""}> Simulation mode</label>
+    <span style="font-weight:500">${on?`<b>${open}</b> players open to pick: Phase 2 joining ignored and other teams' probable drafts released (${rel}). Madhura Mavericks' own drafts stay.`:`Off: only players actually available (final drafts and pool) can be picked.`}</span></div>`;
+}
 function renderTeamBuilder(){
   const box=$('tbPlan'); if(!box) return;
+  const sb=$('simBanner'); if(sb) sb.innerHTML=simBannerHTML();
   if(!P().some(p=>p.stats)){ box.innerHTML='<div class="mut">Load player data first (⚙️ Setup &amp; Data).</div>'; return; }
   if(!INTEL.pct.rpm) buildIntel();
   const core=teamCore(MY), plan=tbPlan(), items=tbItems(plan);
@@ -1640,6 +1652,24 @@ document.addEventListener('click',e=>{
   if(e.target.id==='tbStar'){ const core=teamCore(MY); const items=tbItems(tbPlan()); const pl=S.cfg.purse-core.reduce((a,q)=>a+(q.team?(q.price||0):draftPoint(q)),0); if(items.length){ simulatePlan(items,pl,0.8); items.forEach(x=>{ x.p.star=3; x.p.myVal=x.max; }); persist(); renderPool(); toast(`${items.length} targets set with walk-away prices`); } }
 });
 
+function sharePlanText(){
+  const core=teamCore(MY), items=tbItems(tbPlan());
+  const coreCost=q=>q.team?(q.price||0):draftPoint(q);
+  const purseLeft=S.cfg.purse-core.reduce((a,q)=>a+coreCost(q),0);
+  if(items.length) simulatePlan(items, purseLeft, 0.8);
+  const all=[...core,...items.map(x=>x.p)], k=tbCounts(all), rat=all.reduce((a,q)=>a+(q.rating||0),0);
+  const exp=core.reduce((a,q)=>a+coreCost(q),0)+items.reduce((a,x)=>a+x.p50,0);
+  const L=[`🦏 *Madhura Mavericks · KNPL-7 squad plan*${simOn()?" _(simulation)_":""}`,""];
+  core.forEach((q,i)=>L.push(`${i+1}. ${q.name} · ${q.cat} · SR ${q.rating} · ${q.ownerOf?"Owner":"Draft"} ${fmt(coreCost(q))}`));
+  items.forEach((x,i)=>L.push(`${core.length+i+1}. ${x.p.name} · ${x.p.cat} · SR ${x.p.rating} · ~${fmt(x.p50)} (max ${fmt(x.max)})`));
+  for(let i=all.length;i<S.cfg.squad;i++) L.push(`${i+1}. —`);
+  L.push("",`*Players:* ${all.length}/${S.cfg.squad}`,`*Skill Rating:* ${rat} / ${S.cfg.cap}`,`*Expected points:* ${fmt(exp)} / ${fmt(S.cfg.purse)}`,`*Categories:* Conqueror ${k.C} · Dominator ${k.D} · Rising Star ${k.R} (Elite ${k.RSE}, Core ${k.RSC})`);
+  return L.join("\n");
+}
+document.addEventListener('click',e=>{ if(e.target.id!=='tbShare') return;
+  const t=sharePlanText(); try{ navigator.clipboard.writeText(t); }catch(_){}
+  window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank'); toast("Plan copied · WhatsApp opened"); });
+document.addEventListener('change',e=>{ if(e.target.id==='simChk'){ S.cfg.simMode=e.target.checked; applySeed(); persist(); renderAll(); renderTeamBuilder(); toast(e.target.checked?"Simulation mode on: all pool players open":"Simulation mode off"); } });
 document.addEventListener('change',e=>{ if(e.target.id==='poolFinalChk'){ S.cfg.poolFinal=e.target.checked; applySeed(); persist(); renderAll(); toast(e.target.checked?"Only players in the Auction Pool list are available now":"All approved players considered until the pool is final"); } });
 $('tbGo').onclick=tbSearch; $('tbSearch').addEventListener('change',tbSearch); $('tbSearch').addEventListener('keydown',e=>{ if(e.key==='Enter') tbSearch(); });
 document.querySelector('nav button[data-v=tb]').addEventListener('click',()=>{ $('tbPlan').innerHTML='<div class="mut">🎲 Simulating…</div>'; setTimeout(renderTeamBuilder,20); });

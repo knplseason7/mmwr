@@ -547,7 +547,8 @@ function catCode(s){
 }
 const tag = c => `<span class="tag t-${c}">${c==="NA"?"—":c}</span>`;
 function minBase(){ return S.cfg.minBase>0 ? S.cfg.minBase : 2000; }
-function minRating(){ if(S.cfg.minRating>0) return S.cfg.minRating; const r=P().filter(p=>p.cat==="RSC" && !p.team && !p.isOwner && !p.draftTeam).map(p=>p.rating||0); return r.length? Math.round(r.reduce((a,b)=>a+b,0)/r.length) : 19; }
+// Rule reserve: average Skill Rating of all Rising Star Core players in the pool (about 19), per empty place
+function minRating(){ if(S.cfg.minRating>0) return S.cfg.minRating; const r=P().filter(p=>p.cat==="RSC" && p.rating>0 && !/reject/i.test(p.regStatus||"")).map(p=>p.rating); return r.length? Math.round(r.reduce((a,b)=>a+b,0)/r.length) : 19; }
 
 function teamState(team){
   const ps = P().filter(p=>p.team===team || (!p.team && S.cfg.useDrafts!==false && ((p.ownerOf && typeof sameTeam==='function' && sameTeam(p.ownerOf,team)) || (p.draftTeam && typeof sameTeam==='function' && sameTeam(p.draftTeam,team)))));
@@ -1629,6 +1630,14 @@ function renderTeamBuilder(){
       ${chk(`My limits${nLim<items.length?" + expected":""}${slots>0?" + reserve":""}: ${fmt(myPlanned)} / ${fmt(S.cfg.purse)}`, myPlanned<=S.cfg.purse)} ${chk(`Completes in ${sim.okAll}% of simulations`, sim.okAll>=70)} ${chk(`Skill Rating ${rat} / ${cap}`, rat<=cap)}
       ${chk(`Conqueror ${k.C}/1`, k.C<=1)} ${chk(`Dominator ${k.D}/3 (Apex ${k.DA}/1)`, k.D<=3&&k.DA<=1)} ${chk(`Rising Stars ${k.R} (Elite ${k.RSE}/7 · Core ${k.RSC}/4)`, k.RSE<=7&&k.RSC<=4&&k.C+k.D<=6)}
     </div>
+    ${emptyN>0?`<div class="card" style="margin:0 0 10px;border-color:var(--gold);background:rgba(242,177,52,.06)">
+      <div style="font-weight:800;margin-bottom:6px">How much can I go for my next player? <span class="mut" style="font-weight:500">(player ${all.length+1} of ${S.cfg.squad} · ${emptyN-1} more to buy after him)</span></div>
+      <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px">
+        <div><div class="mut" style="font-size:12px">MAX BID POINTS</div><div style="font-size:30px;font-weight:800;color:${nextPts>=BASE_PT.RSC?'var(--green)':'var(--red)'}">${fmt(Math.max(0,nextPts))}</div>
+          <div class="mut" style="font-size:12px">${fmt(S.cfg.purse)} purse − ${fmt(coreSpend+sumCost)} used${items.length?" (owner, drafts and picks at your limit or expected price)":" (owner and drafts)"} − ${fmt(RES_PT*(emptyN-1))} reserve (${emptyN-1} × ${fmt(RES_PT)})</div></div>
+        <div><div class="mut" style="font-size:12px">MAX SKILL RATING</div><div style="font-size:30px;font-weight:800;color:${nextSR>=resR?'var(--green)':'var(--red)'}">${Math.max(0,Math.round(nextSR))}</div>
+          <div class="mut" style="font-size:12px">${cap} cap − ${coreSR+sumSR} used − ${resR*(emptyN-1)} reserve (${emptyN-1} × ${resR} average Rising Star Core rating)</div></div>
+      </div></div>`:""}
     <div class="row" style="margin-bottom:10px">
       <button class="btn" id="tbFill" ${slots>0?"":"disabled"}>✨ Auto-fill ${slots} remaining place${slots===1?"":"s"} with best options</button>
       <button class="btn sec" id="tbFromGen">Copy generated squad</button>
@@ -1645,9 +1654,9 @@ function renderTeamBuilder(){
         <td class="n"><b class="${(x.winMine??x.win)>=70?"ok":(x.winMine??x.win)>=40?"warn":"bad"}">${x.winMine??x.win}%</b>${x.winMine!=null?'<div class="mut" style="font-size:11px">at my limit</div>':''}</td>
         <td style="white-space:nowrap"><button class="btn sm sec" data-tbalt2="${esc(x.p.id)}">Alternatives</button> <button class="btn sm red" data-tbrm="${esc(x.p.id)}">✕</button></td></tr>
         ${TB_OPEN===x.p.id?`<tr><td></td><td colspan="10">${altHTML(x.p, x.p.id)}</td></tr>`:""}`;}).join("")}
-      ${Array.from({length:Math.max(0,slots)},(_,i)=>`<tr><td class="mut">${all.length+i+1}</td><td colspan="10" class="mut">— empty place —${i===0?` next pick can cost up to <b style="color:${nextPts>=BASE_PT.RSC?'var(--green)':'var(--red)'}">${fmt(Math.max(0,nextPts))}</b> points and have Skill Rating up to <b style="color:${nextSR>=resR?'var(--green)':'var(--red)'}">${Math.max(0,Math.round(nextSR))}</b>, keeping ${fmt(RES_PT)} points and ~${resR} SR for each of the other ${Math.max(0,emptyN-1)} places`:""}</td></tr>`).join("")}
+      ${Array.from({length:Math.max(0,slots)},(_,i)=>`<tr><td class="mut">${all.length+i+1}</td><td colspan="10" class="mut">— empty place —${i===0?` next pick: up to <b>${fmt(Math.max(0,nextPts))}</b> points · Skill Rating up to <b>${Math.max(0,Math.round(nextSR))}</b>`:""}</td></tr>`).join("")}
     </table></div>
-    <div class="note"><b>Max bid / Max SR by rules</b>: the most you could pay, and the highest Skill Rating you could take, for that player while keeping everything else in this plan (other picks at your limit, or expected price) and the reserve for empty places (${fmt(RES_PT)} points and ~${resR} SR each). Green = comfortable, orange = close, red = the plan breaks the rule.<br>
+    <div class="note"><b>Max bid / Max SR by rules</b>: the most you could pay, and the highest Skill Rating you could take, for that player while keeping everything else in this plan (other picks at your limit, or expected price) and the reserve for the places still to fill after him (${fmt(RES_PT)} points and ${resR} Skill Rating each). Green = comfortable, orange = close, red = the plan breaks the rule.<br>
       <b>Win %</b>: in 1,000 simulated auctions, how often your price (your limit if set, otherwise the suggested max) is at least what it takes to win him: the highest rival bid plus one bid step, or the base point if no rival bids.</div>
     <div class="note">Market value and Your max come from the same 1,000-run auction simulation as the generated squad (rivals' interest, past prices, their points reserve, cap and category limits). Your max keeps the rest of this plan affordable in at least 80% of simulations and never goes below base.</div>`;
 }

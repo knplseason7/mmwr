@@ -1610,8 +1610,15 @@ function renderTeamBuilder(){
   const core=teamCore(MY), plan=tbPlan(), items=tbItems(plan);
   const coreCost=q=>q.team?(q.price||0):draftPoint(q);
   const purseLeft=S.cfg.purse-core.reduce((a,q)=>a+coreCost(q),0), cap=S.cfg.cap+(S.cfg.useBonus?S.cfg.bonus:0);
-  const sim=items.length? simulatePlan(items, purseLeft, 0.8) : {okAll:100};
+  const emptyN=Math.max(0,S.cfg.squad-core.length-plan.length), resR=minRating();
+  const sim=items.length? simulatePlan(items, purseLeft-RES_PT*emptyN, 0.8) : {okAll:100};
+  // win chance at my own limit, when set
+  items.forEach(x=>{ if(x.p.myVal){ const pay=simPay(x.p).pay; x.winMine=Math.round(pay.filter(v=>v<=x.p.myVal).length/SIM_N*100); } });
   const all=[...core,...plan], k=tbCounts(all), rat=all.reduce((a,q)=>a+(q.rating||0),0);
+  const cost=x=>x.p.myVal||x.p50, coreSpend=core.reduce((a,q)=>a+coreCost(q),0), coreSR=core.reduce((a,q)=>a+(q.rating||0),0);
+  const sumCost=items.reduce((a,x)=>a+cost(x),0), sumSR=items.reduce((a,x)=>a+(x.p.rating||0),0);
+  items.forEach(x=>{ x.ruleMax = S.cfg.purse - coreSpend - (sumCost-cost(x)) - RES_PT*emptyN; x.ruleSR = cap - coreSR - (sumSR-(x.p.rating||0)) - resR*emptyN; });
+  const nextPts = S.cfg.purse - coreSpend - sumCost - RES_PT*Math.max(0,emptyN-1), nextSR = cap - coreSR - sumSR - resR*Math.max(0,emptyN-1);
   const exp=core.reduce((a,q)=>a+coreCost(q),0)+items.reduce((a,x)=>a+x.p50,0);
   const slots=S.cfg.squad-all.length;
   const myPlanned=core.reduce((a,q)=>a+coreCost(q),0)+items.reduce((a,x)=>a+(x.p.myVal||x.p50),0)+RES_PT*Math.max(0,slots);
@@ -1629,14 +1636,19 @@ function renderTeamBuilder(){
       <button class="btn red" id="tbClear">Clear my picks</button>
     </div>
     <div style="overflow-x:auto"><table>
-      <tr><th>#</th><th>Player</th><th>Cat</th><th class="n">SR</th><th class="n">Market value<div style="font-weight:400;text-transform:none">likely range</div></th><th class="n">Suggested max</th><th class="n">My limit</th><th class="n">Win</th><th></th></tr>
-      ${core.map((q,i)=>`<tr class="mine"><td class="mut">${i+1}</td><td><b>${esc(q.name)}</b> <span class="tag t-NA">${q.ownerOf?"OWNER":q.team?"BOUGHT":"DRAFT"}</span></td><td>${tag(q.cat)}</td><td class="n">${q.rating}</td><td class="n mut">fixed</td><td class="n"><b>${fmt(coreCost(q))}</b></td><td class="n mut">fixed</td><td></td><td></td></tr>`).join("")}
+      <tr><th>#</th><th>Player</th><th>Cat</th><th class="n">SR</th><th class="n">Market value<div style="font-weight:400;text-transform:none">likely range</div></th><th class="n">Suggested max</th><th class="n">My limit</th><th class="n">Max bid<div style="font-weight:400;text-transform:none">by rules</div></th><th class="n">Max SR<div style="font-weight:400;text-transform:none">by rules</div></th><th class="n">Win</th><th></th></tr>
+      ${core.map((q,i)=>`<tr class="mine"><td class="mut">${i+1}</td><td><b>${esc(q.name)}</b> <span class="tag t-NA">${q.ownerOf?"OWNER":q.team?"BOUGHT":"DRAFT"}</span></td><td>${tag(q.cat)}</td><td class="n">${q.rating}</td><td class="n mut">fixed</td><td class="n"><b>${fmt(coreCost(q))}</b></td><td class="n mut">fixed</td><td></td><td></td><td></td><td></td></tr>`).join("")}
       ${items.map((x,i)=>{const pr=profile(x.p); return `<tr><td class="mut">${core.length+i+1}</td><td><b>${esc(x.p.name)}</b><div class="mut" style="font-size:11px">${esc(x.p.district||"")} · ${pr.role}${pr.keeper?" · 🧤":""}${pr.hitter?" · 💥":""}${pr.anchor?" · ⚓":""}${pr.newFace?" · 🆕":""}</div></td><td>${tag(x.p.cat)}</td><td class="n">${x.p.rating}</td>
-        <td class="n">${fmt(x.p50)}<div class="mut" style="font-size:11px">${fmt(x.p25)}–${fmt(x.p80)}</div></td><td class="n"><b style="color:var(--gold2)">${fmt(x.max)}</b></td><td class="n"><input type="number" class="tblim" data-id="${esc(x.p.id)}" min="${BASE_PT[x.p.cat]||2000}" step="100" value="${x.p.myVal||""}" placeholder="set" style="width:96px;text-align:right">${limNote(x)}</td><td class="n"><b class="${x.win>=70?"ok":x.win>=40?"warn":"bad"}">${x.win}%</b></td>
+        <td class="n">${fmt(x.p50)}<div class="mut" style="font-size:11px">${fmt(x.p25)}–${fmt(x.p80)}</div></td><td class="n"><b style="color:var(--gold2)">${fmt(x.max)}</b></td><td class="n"><input type="number" class="tblim" data-id="${esc(x.p.id)}" min="${BASE_PT[x.p.cat]||2000}" step="100" value="${x.p.myVal||""}" placeholder="set" style="width:96px;text-align:right">${limNote(x)}</td>
+        <td class="n"><b class="${cost(x)<=x.ruleMax?(cost(x)<=x.ruleMax*0.85?'ok':'warn'):'bad'}" title="Purse minus everything else in this plan (owner, drafts, other picks at your limit or expected price) minus ${fmt(RES_PT)} for each empty place">${fmt(Math.max(0,x.ruleMax))}</b></td>
+        <td class="n"><b class="${(x.p.rating||0)<=x.ruleSR?((x.p.rating||0)<=x.ruleSR*0.9?'ok':'warn'):'bad'}" title="Cap minus the other players' Skill Ratings minus ~${resR} for each empty place">${Math.max(0,Math.round(x.ruleSR))}</b><div class="mut" style="font-size:11px">his ${x.p.rating}</div></td>
+        <td class="n"><b class="${(x.winMine??x.win)>=70?"ok":(x.winMine??x.win)>=40?"warn":"bad"}">${x.winMine??x.win}%</b>${x.winMine!=null?'<div class="mut" style="font-size:11px">at my limit</div>':''}</td>
         <td style="white-space:nowrap"><button class="btn sm sec" data-tbalt2="${esc(x.p.id)}">Alternatives</button> <button class="btn sm red" data-tbrm="${esc(x.p.id)}">✕</button></td></tr>
-        ${TB_OPEN===x.p.id?`<tr><td></td><td colspan="8">${altHTML(x.p, x.p.id)}</td></tr>`:""}`;}).join("")}
-      ${Array.from({length:Math.max(0,slots)},(_,i)=>`<tr><td class="mut">${all.length+i+1}</td><td colspan="8" class="mut">— empty place — search above or auto-fill</td></tr>`).join("")}
+        ${TB_OPEN===x.p.id?`<tr><td></td><td colspan="10">${altHTML(x.p, x.p.id)}</td></tr>`:""}`;}).join("")}
+      ${Array.from({length:Math.max(0,slots)},(_,i)=>`<tr><td class="mut">${all.length+i+1}</td><td colspan="10" class="mut">— empty place —${i===0?` next pick can cost up to <b style="color:${nextPts>=BASE_PT.RSC?'var(--green)':'var(--red)'}">${fmt(Math.max(0,nextPts))}</b> points and have Skill Rating up to <b style="color:${nextSR>=resR?'var(--green)':'var(--red)'}">${Math.max(0,Math.round(nextSR))}</b>, keeping ${fmt(RES_PT)} points and ~${resR} SR for each of the other ${Math.max(0,emptyN-1)} places`:""}</td></tr>`).join("")}
     </table></div>
+    <div class="note"><b>Max bid / Max SR by rules</b>: the most you could pay, and the highest Skill Rating you could take, for that player while keeping everything else in this plan (other picks at your limit, or expected price) and the reserve for empty places (${fmt(RES_PT)} points and ~${resR} SR each). Green = comfortable, orange = close, red = the plan breaks the rule.<br>
+      <b>Win %</b>: in 1,000 simulated auctions, how often your price (your limit if set, otherwise the suggested max) is at least what it takes to win him: the highest rival bid plus one bid step, or the base point if no rival bids.</div>
     <div class="note">Market value and Your max come from the same 1,000-run auction simulation as the generated squad (rivals' interest, past prices, their points reserve, cap and category limits). Your max keeps the rest of this plan affordable in at least 80% of simulations and never goes below base.</div>`;
 }
 function tbSearch(){

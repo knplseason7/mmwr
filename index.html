@@ -1502,7 +1502,7 @@ function handleSPA(m){
   SPA.bid=m.bid||0; SPA.bidteam=m.bidteam||"";
   const p=spaMatchPlayer(m.player);
   if(m.player && m.player.pcode!==SPA.lastPcode){ SPA.lastPcode=m.player.pcode; SPA.lastPlayer=p;
-    if(p){ liveP=p; $('liveSearch').value=`${p.id} · ${p.name}`; if(S.cfg.autoLive!==false){ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==='live')); document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-live')); } }
+    if(p){ liveP=p; $('liveSearch').value=`${p.id} · ${p.name}`; $('liveMyVal').value=p.myVal||""; if(S.cfg.autoLive!==false){ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v==='live')); document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-live')); } }
   }
   if(SPA.lastPlayer){ $('liveBid').value = SPA.bid || ""; $('soldPrice').value = SPA.bid || ""; if(SPA.bidteam) $('soldTeam').value = spaMatchTeam(SPA.bidteam) || $('soldTeam').value; }
   renderLive(); renderSPABanner(m);
@@ -1556,7 +1556,7 @@ function marketCard(p){
       </div>
     </div>
     <div class="note">Rivals most likely to bid: ${sp.topRivals.length? sp.topRivals.map(r=>`<b>${esc(r.team)}</b> (top bidder in ${r.share}% of simulations, may go to ~${fmt(r.likelyMax)})`).join(" · ") : "none expected above base"}. Why this fit: ${esc(f.why.join(" · "))}.</div>
-    <div class="row" style="margin-top:10px">${isAvail(p)? (inPlan?'<span class="ok">✓ In your plan</span>':`<button class="btn" data-tbadd="${esc(p.id)}">+ Add to my team plan</button>`) : '<span class="mut">Not available to bid</span>'}
+    <div class="row" style="margin-top:10px">${isAvail(p)? (inPlan?`<span class="ok">✓ In your plan${p.myVal?` · your limit ${fmt(p.myVal)}`:""}</span>`:`<label class="mut" style="display:inline-flex;gap:6px;align-items:center">My max limit <input type="number" id="tbLim_${esc(p.id)}" min="${base}" step="100" value="${p.myVal||""}" placeholder="${fmt(sp.p75)}" style="width:110px"></label> <button class="btn" data-tbadd="${esc(p.id)}">+ Add to my team plan</button>`) : '<span class="mut">Not available to bid</span>'}
       <button class="btn sec" data-tbalt="${esc(p.id)}">Show 5 alternatives</button></div>
     <div id="tbAlt_${esc(p.id)}"></div>
   </div>`;
@@ -1596,6 +1596,12 @@ function simBannerHTML(){
     <label style="display:inline-flex;gap:8px;align-items:center;font-weight:700"><input type="checkbox" id="simChk" ${on?"checked":""}> Simulation mode</label>
     <span style="font-weight:500">${on?`<b>${open}</b> players open to pick: Phase 2 joining ignored and other teams' probable drafts released (${rel}). Madhura Mavericks' own drafts stay.`:`Off: only players actually available (final drafts and pool) can be picked.`}</span></div>`;
 }
+const RES_PT=2000;
+function limNote(x){ const v=x.p.myVal, b=BASE_PT[x.p.cat]||2000; if(!v) return ""; 
+  if(v<b) return `<div class="bad" style="font-size:11px">below base ${fmt(b)}</div>`;
+  if(v<x.p25) return `<div class="warn" style="font-size:11px">likely too low</div>`;
+  if(v>x.max) return `<div class="warn" style="font-size:11px">above suggested</div>`;
+  return `<div class="ok" style="font-size:11px">ok</div>`; }
 function renderTeamBuilder(){
   const box=$('tbPlan'); if(!box) return;
   const sb=$('simBanner'); if(sb) sb.innerHTML=simBannerHTML();
@@ -1608,10 +1614,12 @@ function renderTeamBuilder(){
   const all=[...core,...plan], k=tbCounts(all), rat=all.reduce((a,q)=>a+(q.rating||0),0);
   const exp=core.reduce((a,q)=>a+coreCost(q),0)+items.reduce((a,x)=>a+x.p50,0);
   const slots=S.cfg.squad-all.length;
+  const myPlanned=core.reduce((a,q)=>a+coreCost(q),0)+items.reduce((a,x)=>a+(x.p.myVal||x.p50),0)+RES_PT*Math.max(0,slots);
+  const nLim=items.filter(x=>x.p.myVal).length;
   const chk=(l,ok)=>`<span class="pill" style="border-color:${ok?'var(--green)':'var(--red)'}">${ok?"✓":"✗"} ${l}</span>`;
   box.innerHTML=`<div class="row" style="margin-bottom:8px">
       ${chk(`${all.length} / 14 players`, all.length===S.cfg.squad)} ${chk(`Expected spend ${fmt(exp)} / ${fmt(S.cfg.purse)}`, exp<=S.cfg.purse)}
-      ${chk(`Completes in ${sim.okAll}% of simulations`, sim.okAll>=70)} ${chk(`Skill Rating ${rat} / ${cap}`, rat<=cap)}
+      ${chk(`My limits${nLim<items.length?" + expected":""}${slots>0?" + reserve":""}: ${fmt(myPlanned)} / ${fmt(S.cfg.purse)}`, myPlanned<=S.cfg.purse)} ${chk(`Completes in ${sim.okAll}% of simulations`, sim.okAll>=70)} ${chk(`Skill Rating ${rat} / ${cap}`, rat<=cap)}
       ${chk(`Conqueror ${k.C}/1`, k.C<=1)} ${chk(`Dominator ${k.D}/3 (Apex ${k.DA}/1)`, k.D<=3&&k.DA<=1)} ${chk(`Rising Stars ${k.R} (Elite ${k.RSE}/7 · Core ${k.RSC}/4)`, k.RSE<=7&&k.RSC<=4&&k.C+k.D<=6)}
     </div>
     <div class="row" style="margin-bottom:10px">
@@ -1621,13 +1629,13 @@ function renderTeamBuilder(){
       <button class="btn red" id="tbClear">Clear my picks</button>
     </div>
     <div style="overflow-x:auto"><table>
-      <tr><th>#</th><th>Player</th><th>Cat</th><th class="n">SR</th><th class="n">Market value<div style="font-weight:400;text-transform:none">likely range</div></th><th class="n">Your max</th><th class="n">Win</th><th></th></tr>
-      ${core.map((q,i)=>`<tr class="mine"><td class="mut">${i+1}</td><td><b>${esc(q.name)}</b> <span class="tag t-NA">${q.ownerOf?"OWNER":q.team?"BOUGHT":"DRAFT"}</span></td><td>${tag(q.cat)}</td><td class="n">${q.rating}</td><td class="n mut">fixed</td><td class="n"><b>${fmt(coreCost(q))}</b></td><td></td><td></td></tr>`).join("")}
+      <tr><th>#</th><th>Player</th><th>Cat</th><th class="n">SR</th><th class="n">Market value<div style="font-weight:400;text-transform:none">likely range</div></th><th class="n">Suggested max</th><th class="n">My limit</th><th class="n">Win</th><th></th></tr>
+      ${core.map((q,i)=>`<tr class="mine"><td class="mut">${i+1}</td><td><b>${esc(q.name)}</b> <span class="tag t-NA">${q.ownerOf?"OWNER":q.team?"BOUGHT":"DRAFT"}</span></td><td>${tag(q.cat)}</td><td class="n">${q.rating}</td><td class="n mut">fixed</td><td class="n"><b>${fmt(coreCost(q))}</b></td><td class="n mut">fixed</td><td></td><td></td></tr>`).join("")}
       ${items.map((x,i)=>{const pr=profile(x.p); return `<tr><td class="mut">${core.length+i+1}</td><td><b>${esc(x.p.name)}</b><div class="mut" style="font-size:11px">${esc(x.p.district||"")} · ${pr.role}${pr.keeper?" · 🧤":""}${pr.hitter?" · 💥":""}${pr.anchor?" · ⚓":""}${pr.newFace?" · 🆕":""}</div></td><td>${tag(x.p.cat)}</td><td class="n">${x.p.rating}</td>
-        <td class="n">${fmt(x.p50)}<div class="mut" style="font-size:11px">${fmt(x.p25)}–${fmt(x.p80)}</div></td><td class="n"><b style="color:var(--gold2)">${fmt(x.max)}</b></td><td class="n"><b class="${x.win>=70?"ok":x.win>=40?"warn":"bad"}">${x.win}%</b></td>
+        <td class="n">${fmt(x.p50)}<div class="mut" style="font-size:11px">${fmt(x.p25)}–${fmt(x.p80)}</div></td><td class="n"><b style="color:var(--gold2)">${fmt(x.max)}</b></td><td class="n"><input type="number" class="tblim" data-id="${esc(x.p.id)}" min="${BASE_PT[x.p.cat]||2000}" step="100" value="${x.p.myVal||""}" placeholder="set" style="width:96px;text-align:right">${limNote(x)}</td><td class="n"><b class="${x.win>=70?"ok":x.win>=40?"warn":"bad"}">${x.win}%</b></td>
         <td style="white-space:nowrap"><button class="btn sm sec" data-tbalt2="${esc(x.p.id)}">Alternatives</button> <button class="btn sm red" data-tbrm="${esc(x.p.id)}">✕</button></td></tr>
-        ${TB_OPEN===x.p.id?`<tr><td></td><td colspan="7">${altHTML(x.p, x.p.id)}</td></tr>`:""}`;}).join("")}
-      ${Array.from({length:Math.max(0,slots)},(_,i)=>`<tr><td class="mut">${all.length+i+1}</td><td colspan="7" class="mut">— empty place — search above or auto-fill</td></tr>`).join("")}
+        ${TB_OPEN===x.p.id?`<tr><td></td><td colspan="8">${altHTML(x.p, x.p.id)}</td></tr>`:""}`;}).join("")}
+      ${Array.from({length:Math.max(0,slots)},(_,i)=>`<tr><td class="mut">${all.length+i+1}</td><td colspan="8" class="mut">— empty place — search above or auto-fill</td></tr>`).join("")}
     </table></div>
     <div class="note">Market value and Your max come from the same 1,000-run auction simulation as the generated squad (rivals' interest, past prices, their points reserve, cap and category limits). Your max keeps the rest of this plan affordable in at least 80% of simulations and never goes below base.</div>`;
 }
@@ -1641,7 +1649,8 @@ function tbAutoFill(){
   S.myPlan=r.sel.map(x=>x.p.id); persist(); renderTeamBuilder(); toast(r.r2?`Plan filled — ${r.r2} place(s) left for round 2 (unsold players at ~${fmt(r.r2Cost)})`:"Plan filled — your picks were kept");
 }
 document.addEventListener('click',e=>{
-  const a=e.target.closest('[data-tbadd]'); if(a){ const id=a.dataset.tbadd; const plan=S.myPlan||(S.myPlan=[]); if(!plan.includes(id)){ if(teamCore(MY).length+tbPlan().length>=S.cfg.squad){ toast("Plan already has 14 — remove someone first"); return; } plan.push(id); persist(); } renderTeamBuilder(); tbSearch(); toast("Added to your plan"); return; }
+  const a=e.target.closest('[data-tbadd]'); if(a){ const id=a.dataset.tbadd; const plan=S.myPlan||(S.myPlan=[]);
+    const li=document.getElementById('tbLim_'+id); if(li && +li.value>0 && S.players[id]) S.players[id].myVal=Math.round(+li.value/100)*100; if(!plan.includes(id)){ if(teamCore(MY).length+tbPlan().length>=S.cfg.squad){ toast("Plan already has 14 — remove someone first"); return; } plan.push(id); persist(); } renderTeamBuilder(); tbSearch(); toast("Added to your plan"); return; }
   const rm=e.target.closest('[data-tbrm]'); if(rm){ S.myPlan=(S.myPlan||[]).filter(x=>x!==rm.dataset.tbrm); persist(); renderTeamBuilder(); return; }
   const al=e.target.closest('[data-tbalt]'); if(al){ const p=S.players[al.dataset.tbalt]; const box=$('tbAlt_'+p.id); if(box) box.innerHTML = box.innerHTML? "" : altHTML(p, (S.myPlan||[]).includes(p.id)?p.id:null); return; }
   const al2=e.target.closest('[data-tbalt2]'); if(al2){ TB_OPEN = TB_OPEN===al2.dataset.tbalt2? null : al2.dataset.tbalt2; renderTeamBuilder(); return; }
@@ -1661,14 +1670,15 @@ function sharePlanText(){
   const exp=core.reduce((a,q)=>a+coreCost(q),0)+items.reduce((a,x)=>a+x.p50,0);
   const L=[`🦏 *Madhura Mavericks · KNPL-7 squad plan*${simOn()?" _(simulation)_":""}`,""];
   core.forEach((q,i)=>L.push(`${i+1}. ${q.name} · ${q.cat} · SR ${q.rating} · ${q.ownerOf?"Owner":"Draft"} ${fmt(coreCost(q))}`));
-  items.forEach((x,i)=>L.push(`${core.length+i+1}. ${x.p.name} · ${x.p.cat} · SR ${x.p.rating} · ~${fmt(x.p50)} (max ${fmt(x.max)})`));
+  items.forEach((x,i)=>L.push(`${core.length+i+1}. ${x.p.name} · ${x.p.cat} · SR ${x.p.rating} · ~${fmt(x.p50)}${x.p.myVal?` · *my limit ${fmt(x.p.myVal)}*`:` (max ${fmt(x.max)})`}`));
   for(let i=all.length;i<S.cfg.squad;i++) L.push(`${i+1}. —`);
-  L.push("",`*Players:* ${all.length}/${S.cfg.squad}`,`*Skill Rating:* ${rat} / ${S.cfg.cap}`,`*Expected points:* ${fmt(exp)} / ${fmt(S.cfg.purse)}`,`*Categories:* Conqueror ${k.C} · Dominator ${k.D} · Rising Star ${k.R} (Elite ${k.RSE}, Core ${k.RSC})`);
+  L.push("",`*Players:* ${all.length}/${S.cfg.squad}`,`*Skill Rating:* ${rat} / ${S.cfg.cap}`,`*Expected points:* ${fmt(exp)} / ${fmt(S.cfg.purse)}`, ...(items.some(x=>x.p.myVal)?[`*Planned with my limits:* ${fmt(core.reduce((a,q)=>a+coreCost(q),0)+items.reduce((a,x)=>a+(x.p.myVal||x.p50),0))}`]:[]),`*Categories:* Conqueror ${k.C} · Dominator ${k.D} · Rising Star ${k.R} (Elite ${k.RSE}, Core ${k.RSC})`);
   return L.join("\n");
 }
 document.addEventListener('click',e=>{ if(e.target.id!=='tbShare') return;
   const t=sharePlanText(); try{ navigator.clipboard.writeText(t); }catch(_){}
   window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank'); toast("Plan copied · WhatsApp opened"); });
+document.addEventListener('change',e=>{ if(e.target.classList && e.target.classList.contains('tblim')){ const p=S.players[e.target.dataset.id]; if(p){ const v=+e.target.value; p.myVal= v>0? Math.round(v/100)*100 : 0; persist(); renderTeamBuilder(); toast(p.myVal?`Your limit for ${p.name}: ${fmt(p.myVal)}`:"Limit cleared"); } } });
 document.addEventListener('change',e=>{ if(e.target.id==='simChk'){ S.cfg.simMode=e.target.checked; applySeed(); persist(); renderAll(); renderTeamBuilder(); toast(e.target.checked?"Simulation mode on: all pool players open":"Simulation mode off"); } });
 document.addEventListener('change',e=>{ if(e.target.id==='poolFinalChk'){ S.cfg.poolFinal=e.target.checked; applySeed(); persist(); renderAll(); toast(e.target.checked?"Only players in the Auction Pool list are available now":"All approved players considered until the pool is final"); } });
 $('tbGo').onclick=tbSearch; $('tbSearch').addEventListener('change',tbSearch); $('tbSearch').addEventListener('keydown',e=>{ if(e.key==='Enter') tbSearch(); });

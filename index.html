@@ -804,13 +804,15 @@ function simPlanAI(first){
   cur.ai={t:w.t,at:Date.now()+d*1000};
 }
 function simWait(cur){ const c=simCfg(); return (cur.myPass || (c.ff && !simMarked(cur.p))) && cur.lead!==MY && !cur.ai ? 2500 : WAIT; }
-function simStep(){
+function simStep(clockOnly){
   const cur=SIM.cur; if(SIM.paused||!cur||cur.closed) return; const now=Date.now();
-  if(cur.ai && now>=cur.ai.at){ const w=aiWant(cur); if(w){ simPlace(w.t); return; } cur.ai=null; }
+  if(!clockOnly && cur.ai && now>=cur.ai.at){ const w=aiWant(cur); if(w){ simPlace(w.t); return; } cur.ai=null; }
   const left=simWait(cur)-(now-cur.lastAt);
-  if(left<=0){ simClose(); return; }
-  const el=$('sClock'); if(el){ const sec=Math.ceil(left/1000), pct=Math.max(0,Math.min(100,left/WAIT*100));
-    el.innerHTML=`<div class="row" style="justify-content:space-between"><b class="${sec<=5?"bad":"warn"}" style="font-size:18px">⏱ ${sec} s</b><span class="mut sm">${cur.lead?`sold to ${esc(short(cur.lead))} if no new bid`:"unsold if no bid"}</span></div><div style="height:6px;background:#0b1220;border-radius:4px;margin-top:4px"><i style="display:block;height:100%;width:${pct}%;background:${sec<=5?"var(--red)":"var(--gold)"};border-radius:4px"></i></div>`; }
+  if(left<=0){ if(!clockOnly) simClose(); return; }
+  const tEl=$('sClkT'); if(tEl){ const sec=Math.max(0,Math.ceil(left/1000)), pct=Math.max(0,Math.min(100,left/WAIT*100)), txt=`⏱ ${sec} s`, sub=cur.lead?`sold to ${short(cur.lead)} if no new bid`:"unsold if no bid";
+    if(tEl.textContent!==txt){ tEl.textContent=txt; tEl.className=sec<=5?"bad":"warn"; }
+    const sEl=$('sClkS'); if(sEl.textContent!==sub) sEl.textContent=sub;
+    const bar=$('sClkBar'); bar.style.width=pct+"%"; bar.style.backgroundColor=sec<=5?"var(--red)":"var(--gold)"; }
 }
 function simPlace(team){ const cur=SIM.cur, next=simNextBid(cur); cur.bid=next; cur.lead=team; cur.lastAt=Date.now(); cur.hist.push([next,team]); if(team===MY) cur.myPass=false; simPlanAI(); renderSim(); }
 function simClose(){
@@ -841,7 +843,8 @@ function renderSim0(){
   const going=cur.closed? (cur.lead?`SOLD to ${esc(cur.lead)} for ${fmt(cur.bid)}`:"UNSOLD") : SIM.paused? "Paused" : cur.bid? "" : `Opens at ${fmt(v.ob)} — any bid?`;
   const pr=PROF[p.id];
   const canBid=!cur.closed && cur.lead!==MY && v.me.ok && v.next<=v.me.max;
-  box.innerHTML=`<div class="row" style="margin-bottom:8px"><b class="cond" style="font-size:20px;color:var(--gold2)">${esc(cur.label)}</b><span class="mut">player ${cur.no} of ${cur.of}</span>
+  const key=p.id+"|"+(cur.closed?1:0)+"|"+(SIM.paused?1:0);
+  const html=`<div class="row" style="margin-bottom:8px"><b class="cond" style="font-size:20px;color:var(--gold2)">${esc(cur.label)}</b><span class="mut">player ${cur.no} of ${cur.of}</span>
      <span style="margin-left:auto" class="row"><button class="btn sec sm" id="sPause">${SIM.paused?"▶ Resume":"⏸ Pause"}</button>
      <select id="sSpeed">${["fast","normal","slow"].map(x=>`<option value="${x}" ${c.speed===x?"selected":""}>${x[0].toUpperCase()+x.slice(1)}</option>`).join("")}</select>
      <label class="mut sm"><input type="checkbox" id="sFF" ${c.ff?"checked":""}> Fast-forward players I haven't marked</label>
@@ -851,19 +854,28 @@ function renderSim0(){
        <div class="mut sm">${esc(p.id)} · ${esc(p.district||"")} · ${statLine(p)}</div>
        <div class="cond" style="font-size:30px;font-weight:800;color:var(--gold2)">${esc(p.name)}</div>
        <div class="row">${tag(p.cat)} <b>SR ${p.rating}</b> ${v.m.role?`<span class="tag t-x">${esc(ROLEN[v.m.role])}</span>`:""} ${isLeft(p)?'<span class="tag t-x">LH</span>':""} ${v.m.st==="T"?"★ Target":v.m.st==="B"?"Backup":""}</div>${v.m.note?`<div class="sm" style="margin-top:4px">📝 ${esc(v.m.note)}</div>`:""}</div></div>
-       <div style="text-align:right;flex:none"><div class="mut sm">Current bid</div><div class="big">${cur.bid?fmt(cur.bid):"–"}</div><div class="sm ${cur.lead===MY?"ok":""}"><b>${cur.lead?esc(cur.lead):"no bid yet"}</b></div><div class="warn sm" style="margin-top:4px;font-weight:700">${going}</div></div></div>
+       <div data-dyn style="text-align:right;flex:none;min-width:210px"><div class="mut sm">Current bid</div><div class="big">${cur.bid?fmt(cur.bid):"–"}</div><div class="sm ${cur.lead===MY?"ok":""}"><b>${cur.lead?esc(cur.lead):"no bid yet"}</b></div><div class="warn sm" style="margin-top:4px;font-weight:700;min-height:18px">${going}</div></div></div>
      ${profHTML(p)}
-     <div id="sClock" style="margin-top:10px"></div>
+     <div id="sClock" style="margin-top:10px"><div class="row" style="justify-content:space-between"><b id="sClkT" class="warn" style="font-size:18px;font-variant-numeric:tabular-nums">⏱ 15 s</b><span id="sClkS" class="mut sm"></span></div><div style="height:6px;background:#0b1220;border-radius:4px;margin-top:4px;overflow:hidden"><i id="sClkBar" style="display:block;height:100%;width:100%;background:var(--gold);border-radius:4px;transition:width .3s linear,background-color .4s"></i></div></div>
      <div class="row" style="margin-top:12px"><button class="btn" id="sBid" style="font-size:20px;padding:14px 26px" ${canBid?"":"disabled"}>🦏 BID UP · ${fmt(v.next)}</button><button class="btn sec" id="sPass" ${cur.closed||cur.lead===MY?"disabled":""} title="Not interested: close quickly if no other team bids">Pass</button>
        <label class="mut sm">My max <input type="number" step="100" id="sMax" value="${v.myMax||""}" style="width:100px"></label></div>
-     <div class="v ${v.cls}" style="margin-top:12px"><div style="font-size:19px">${v.head}</div>${v.sub.map(x=>`<div class="sm" style="font-weight:500;margin-top:4px">${x}</div>`).join("")}</div>
-     <div class="kv" style="margin-top:10px"><div><span>My max</span><b>${v.myMax?fmt(v.myMax):"–"}</b></div><div><span>Rule max</span><b>${v.me.ok?fmt(v.me.max):"✕"}</b></div><div><span>Plan budget</span><b>${v.bud.others?fmt(Math.max(0,v.bud.pts)):"–"}</b></div><div><span>Points left</span><b>${fmt(myT.purse)}</b></div><div><span>Places left</span><b>${myT.slots}</b></div><div><span>SR room</span><b>${myT.maxSR}</b></div></div>
-     <div class="mut sm" style="margin-top:8px">Bids: ${cur.hist.slice(-8).map(h=>`${fmt(h[0])} ${esc(short(h[1]))}`).join(" → ")||"none yet"}</div>
+     <div data-dyn style="min-height:118px;margin-top:12px"><div class="v ${v.cls}" style="transition:background-color .3s,border-color .3s"><div style="font-size:19px">${v.head}</div>${v.sub.map(x=>`<div class="sm" style="font-weight:500;margin-top:4px">${x}</div>`).join("")}</div></div>
+     <div data-dyn class="kv" style="margin-top:10px"><div><span>My max</span><b>${v.myMax?fmt(v.myMax):"–"}</b></div><div><span>Rule max</span><b>${v.me.ok?fmt(v.me.max):"✕"}</b></div><div><span>Plan budget</span><b>${v.bud.others?fmt(Math.max(0,v.bud.pts)):"–"}</b></div><div><span>Points left</span><b>${fmt(myT.purse)}</b></div><div><span>Places left</span><b>${myT.slots}</b></div><div><span>SR room</span><b>${myT.maxSR}</b></div></div>
+     <div data-dyn class="mut sm" style="margin-top:8px;min-height:36px">Bids: ${cur.hist.slice(-8).map(h=>`${fmt(h[0])} ${esc(short(h[1]))}`).join(" → ")||"none yet"}</div>
    </div>
-   <div class="card"><h3>Who can still bid ${fmt(v.next)}</h3><div class="tchips">${v.rv.map(r=>`<span class="tchip ${!r.ok||r.max<v.next?"no":""}" title="${esc(r.team)}${r.ok?" · up to "+fmt(r.max):" · "+esc(r.why)}">${esc(short(r.team))} ${r.ok?`<b>${fmt(r.max)}</b>`:'<span class="mut">✕</span>'}</span>`).join("")}</div>
-     <h3 style="margin-top:12px">Next options</h3>${altHTML(p,5)}
+   <div class="card"><div data-dyn><h3>Who can still bid ${fmt(v.next)}</h3><div class="tchips">${v.rv.map(r=>`<span class="tchip ${!r.ok||r.max<v.next?"no":""}" title="${esc(r.team)}${r.ok?" · up to "+fmt(r.max):" · "+esc(r.why)}">${esc(short(r.team))} ${r.ok?`<b>${fmt(r.max)}</b>`:'<span class="mut">✕</span>'}</span>`).join("")}</div></div>
+     <h3 style="margin-top:12px">Next options</h3><div data-dyn>${altHTML(p,5)}</div>
      <h3 style="margin-top:12px">My squad (${myT.r.length}/14)</h3><div class="sm">${myT.r.map(x=>`${esc(x.p.name)} ${tag(x.p.cat)} ${x.p.rating} <span class="mut">${x.how==="Bought"?fmt(x.pts):x.how}</span>`).join(" · ")}</div>
      <h3 style="margin-top:12px">Last sales</h3><div class="sm">${SIM.log.slice(0,8).map(([q,t,pr])=>`${esc(q.name)} → ${t?`<b class="${t===MY?"ok":""}">${esc(short(t))}</b> ${fmt(pr)}`:'<span class="mut">unsold</span>'}`).join("<br>")||'<span class="mut">none yet</span>'}</div></div></div>`;
+  if(SIM._rk===key && box.querySelector('[data-dyn]')){
+    // a new bid on the same player: swap only the parts that change, so the screen stays still
+    const tmp=document.createElement('div'); tmp.innerHTML=html;
+    const nw=tmp.querySelectorAll('[data-dyn]'), old=box.querySelectorAll('[data-dyn]');
+    nw.forEach((el,i)=>{ if(old[i] && old[i].innerHTML!==el.innerHTML) old[i].innerHTML=el.innerHTML; });
+    const b=$('sBid'); b.disabled=!canBid; b.textContent=`🦏 BID UP · ${fmt(v.next)}`; $('sPass').disabled=cur.closed||cur.lead===MY;
+    simStep(true); return;
+  }
+  SIM._rk=key; box.innerHTML=html;
   $('sBid').onclick=simBid; $('sPass').onclick=simPass;
   $('sPause').onclick=simPauseToggle; $('sReset').onclick=()=>{ if(confirm("Reset the practice auction? Every player bought in practice goes back to the pool. Owners and your draft marks stay with their teams.")) simReset(); };
   $('sSpeed').onchange=e=>{ S.cfg.sim.speed=e.target.value; persist(); };

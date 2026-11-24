@@ -239,7 +239,7 @@ body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{displ
       <span class="mut" id="poolCount"></span>
     </div>
     <div class="scroll"><table id="poolTable"></table></div>
-    <div class="note">Click ★ to rank targets (1–3). "Value" = Skill Rating per 1,000 base points — higher means more rating for the money. Ratings stay subject to change until the post-NPL-5 update and the final pool (30 Nov).</div>
+    <div class="note">Click ★ to rank targets (1–3). "Value" = Skill Rating per 1,000 base points — higher means more rating for the money. Ratings are final (post-NPL-5); the final pool of 248 (incl. owners) was frozen on 22 Nov.</div>
   </div>
 </section>
 
@@ -333,7 +333,7 @@ body.locked main,body.locked nav,body.locked #askFab,body.locked #askPanel{displ
     <div class="card"><h3>Before auction day</h3>
       <ul class="tight">
         <li>Load the categorised pool with Skill Ratings (24 Nov) in Setup.</li>
-        <li>Update to the final pool list (30 Nov) — ratings will have the NPL-5 update and revised Awards.</li>
+        <li>Final pool list frozen 22 Nov (248 incl. owners) — refresh data once more after drafts close on 28 Nov.</li>
         <li>Enter owner + drafted players for every team (draft lists confirmed 28 Nov).</li>
         <li>Rank targets ★★★ / ★★ / ★ and set a walk-away price for each ★★★.</li>
         <li>Check Super Player Auction Platform login and a backup device.</li>
@@ -403,7 +403,7 @@ KNPL7-0001	Player Name	Dominator Core	48	2400"></textarea>
         <button class="btn" id="importBtn">Import / update pool</button>
         <span class="mut" id="importMsg"></span>
       </div>
-      <div class="note">Re-importing keeps sale results, targets and notes for matching Reg IDs and updates ratings — use it again when the final pool lands on 30 Nov.</div>
+      <div class="note">Re-importing keeps sale results, targets and notes for matching Reg IDs and updates ratings — use it again after the drafts close on 28 Nov.</div>
     </div>
 
     <div class="card"><h3>Pre-auction players (owner + draft)</h3>
@@ -508,7 +508,7 @@ const TIMELINE = [
   ["2026-11-24","Categorised auction pool with Skill Ratings"],
   ["2026-11-25","Auction rules published"],
   ["2026-11-28","Teams confirm draft list"],
-  ["2026-11-30","Final auction pool list (frozen)"],
+  ["2026-11-22","Final auction pool list frozen (248 incl. owners)"],
   ["2026-12-12","MEGA AUCTION · 8:00 AM · Chola Farm Resorts"],
   ["2027-02-11","KNPL-7 begins · Angamaly"]
 ];
@@ -690,7 +690,7 @@ function renderDash(){
     return `<div class="catbox"><div class="mut" style="font-size:12px">${GNAME[g]}</div><div class="v" style="color:var(--${g==="C"?"cq":g==="D"?"dm":"rs"})">${t.g[g]}${lim?`<span class="mut" style="font-size:16px"> / ${lim}</span>`:""}</div></div>`;}).join("")}</div>`;
 
   const al=[];
-  if(P().length && simOn()) al.push(`<div class="warn" style="color:var(--gold2)">• <b>Simulation mode is on</b>: all pool players can be picked (other teams' probable drafts released, Phase 2 ignored). Turn it off in 🧩 Team Builder once final drafts and pool are out.</div>`);
+  if(P().length && simOn()) al.push(`<div class="warn" style="color:var(--gold2)">• <b>Simulation mode is on</b>: all final-pool players can be picked (other teams' probable drafts released). Turn it off in 🧩 Team Builder once the final drafts are out (28 Nov).</div>`);
   if(P().length && S.syncedAt && Date.now()-S.syncedAt>12*3600*1000) al.push(`<div class="warn">• Player data was last refreshed ${new Date(S.syncedAt).toLocaleString('en-IN')}. ${IN_CLAUDE?"Sync in ⚙️ Setup &amp; Data":"⚙️ Setup &amp; Data → Refresh player data"} to pick up the latest ratings and stats.</div>`);
   if(P().length && !draftSource().list.length) al.push(`<div class="bad">• Draft list not loaded — drafted players may show as available. ${IN_CLAUDE?"Sync in ⚙️ Setup &amp; Data.":"⚙️ Setup &amp; Data → Refresh player data."}</div>`);
   if(rsGap>0) al.push(`<div class="${rsGap>=t.slots?"bad":rsGap>=t.slots-1?"warn":"mut"}">• Need ${rsGap} more Rising Star${rsGap>1?"s":""} for the RSM opener (8 in the XII)${rsGap>=t.slots?" — every remaining slot must be a Rising Star":""}.</div>`);
@@ -981,7 +981,7 @@ function applySeed(){
   P().forEach(p=>{ p.base = BASE_PT[p.cat] || p.base || 2000; delete p.draftDropped; });
   if(!src.final) trimDrafts();
   // Simulation mode: every pool player can be picked, except Madhura Mavericks' own drafts (Phase 2 joining and other teams' drafts ignored)
-  if(simOn()){ P().forEach(p=>{ delete p.simReleased; if(p.draftTeam && normTeam(p.draftTeam)!==normTeam(MY)){ p.simReleased=p.draftTeam; delete p.draftTeam; } p.inPool=true; }); }
+  if(simOn()){ P().forEach(p=>{ delete p.simReleased; if(p.draftTeam && normTeam(p.draftTeam)!==normTeam(MY)){ p.simReleased=p.draftTeam; delete p.draftTeam; } p.inPool = (S.poolIds && poolFinal()) ? p.joined : true; }); }
 }
 function simOn(){ return S.cfg.simMode!=null ? !!S.cfg.simMode : !draftSource().final; }
 /* Draft rule: up to 3 incl. owner; max 1 Conqueror, 2 Dominators, not 2 Dominator Apex; with 3 players at least 1 Rising Star.
@@ -1002,7 +1002,7 @@ function trimDrafts(){
   });
 }
 // The Auction Pool tab fills up during Phase 2; it only limits who is available once the final pool is published (30 Nov) or marked final in Setup.
-function poolFinal(){ return !!S.cfg.poolFinal || Date.now() >= Date.parse('2026-11-30T00:00:00+05:30'); }
+function poolFinal(){ return !!S.cfg.poolFinal || Date.now() >= Date.parse('2026-11-22T00:00:00+05:30'); }
 function isAvail(p){ return !p.team && !p.isOwner && !p.draftTeam && p.inPool!==false && !/reject/i.test(p.regStatus||"") && !(p.rating===0 && RATED()); }
 function RATED(){ return P().some(q=>q.rating>0); }
 function applyMeta(j){
@@ -1016,7 +1016,7 @@ function dataStatusHTML(){
   const chg = L? `<div class="card" style="margin-top:10px;border-color:var(--gold)"><b>Last refresh ${new Date(L.at).toLocaleString('en-IN')}</b> — stats updated for ${L.stats} players · ${L.rating.length} Skill Rating changes · ${L.cat.length} category changes${L.added?` · ${L.added} new`:''}${L.removed.length?` · removed: ${L.removed.map(esc).join(', ')}`:''}
     ${L.cat.length?`<div style="margin-top:6px"><b>Category changes:</b> ${L.cat.map(([id,n,a,b])=>`${esc(n)} (${catN[a]||a} → <b>${catN[b]||b}</b>)`).join(' · ')}</div>`:''}
     ${L.rating.length?`<details style="margin-top:6px"><summary>Skill Rating changes (${L.rating.length})</summary><div class="mut" style="font-size:12px">${L.rating.sort((x,y)=>Math.abs(y[3]-y[2])-Math.abs(x[3]-x[2])).map(([id,n,a,b])=>`${esc(n)} ${a}→<b>${b}</b>`).join(' · ')}</div></details>`:''}</div>` : '';
-  return chg + `Data last refreshed: <b>${S.syncedAt?new Date(S.syncedAt).toLocaleString('en-IN'):'never'}</b> · Draft list: <b>${src.label}</b>${src.final?"":" · switches to confirmed drafts automatically once teams submit"} · Auction pool: <b>${!S.poolIds?"no one joined yet — all approved registrations considered": poolFinal()?`final (${S.poolIds.length} players)`:`${S.poolIds.length} joined so far — everyone approved still considered until the pool is final (30 Nov)`}</b>
+  return chg + `Data last refreshed: <b>${S.syncedAt?new Date(S.syncedAt).toLocaleString('en-IN'):'never'}</b> · Draft list: <b>${src.label}</b>${src.final?"":" · switches to confirmed drafts automatically once teams submit"} · Auction pool: <b>${!S.poolIds?"no one joined yet — all approved registrations considered": poolFinal()?`final (${S.poolIds.length} players)`:`${S.poolIds.length} joined so far — everyone approved still considered until the pool is final`}</b>
    <label style="display:inline-flex;gap:6px;align-items:center;margin-left:8px"><input type="checkbox" id="poolFinalChk" ${S.cfg.poolFinal?"checked":""}> Treat the Auction Pool list as final now</label>`;
 }
 function ownerTeamOf(p){ return p.ownerOf || ""; }

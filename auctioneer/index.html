@@ -435,6 +435,7 @@ setInterval(()=>{ if(ST.on && Date.now()-ST.at>15000){ ST.on=false; $('link').cl
 
 /* ---------- player ---------- */
 function partsHTML(p){
+  if(!p.x) return `<div class="empty">Late registration: the part-by-part breakdown is not on the published Skill Rating page yet.<br>Skill Rating <b>${p.s}</b> is from the official final pool list (frozen 22 Nov).</div>`;
   const x=p.x||{};
   return `<div class="parts">${PARTS.map(([k,l,w,c])=>{ const v=+x[k]||0; return `<div class="part"><div class="nmx">${l}<small>${w}% of Skill Rating</small></div><div class="bar" role="img" aria-label="${l} ${v} out of 100"><i style="width:${Math.max(0,Math.min(100,v))}%;background:${c}"></i></div><div class="val">${v}<small> /100 · +${(v*w/100).toFixed(1)}</small></div></div>`; }).join("")}
    <div class="formula"><span>Skill Rating = 0.55 × Performance + 0.15 × Win Impact + 0.10 × Awards + 0.10 × Consistency + 0.10 × Experience → rounded to a whole number</span><span class="srbig">${p.s}</span></div></div>`;

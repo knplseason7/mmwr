@@ -206,7 +206,8 @@ dialog::backdrop{background:rgba(5,8,14,.6)}
     <input type="search" id="q" autocomplete="off" placeholder="Find player: name / Reg No" aria-label="Find a player">
     <button type="button" class="btn" id="qGo">Show</button>
     <div class="sug" id="sug" role="listbox"></div></div>
-  <label class="ctl">Round <select id="round"><option value="1">1</option><option value="2">2</option><option value="3">3</option></select></label>
+  <label class="ctl" title="Stage of the auction (Rule 8.2)"><select id="round"><option value="1">1st round</option><option value="2">2nd round</option><option value="3">RSC pool</option><option value="4">RSC 2nd / R3</option></select></label>
+  <label class="ctl" title="Rule 7.1A: once every Conqueror has been called, a team with no Conqueror gets a 4th Dominator place. Ticks itself when the first Dominator comes on the block."><input type="checkbox" id="cDone"> C called</label>
   <label class="ctl" title="Team data refreshes after bids pause this long">Refresh <select id="pause"><option value="3">3 s</option><option value="4" selected>4 s</option><option value="5">5 s</option></select></label>
   <button type="button" class="pill" id="link" title="Live link set-up"><span class="dot"></span><span id="linkTxt">Not linked</span></button>
 </header>
@@ -234,15 +235,18 @@ dialog::backdrop{background:rgba(5,8,14,.6)}
      <li><b>+25 bonus</b> once in three seasons (squad cap 560 → 585, or retention cap 300 → 325). Declare it before the bid that needs it; final once declared.</li>
      <li>Highest rating a team can buy = 560 − its current total − reserve for its other empty places.</li></ul></div>
    <div class="rc"><h4>Reserves on every bid</h4><ul>
-     <li><b>Points:</b> keep 2,000 for every place still empty after this player.</li>
-     <li><b>Skill Rating:</b> keep the average Rising Star Core rating (about 19) for every empty place.</li>
+     <li><b>Points:</b> keep the base point of the lowest category still available (2,000 while Rising Star Core players remain) for every place still empty after this player.</li>
+     <li><b>Skill Rating:</b> keep the average rating of the Rising Star Core players still available, rounded up (about 19), for every empty place.</li>
      <li>A bid is accepted only if it passes four checks: an <b>empty place</b>, the <b>points reserve</b>, the <b>Skill Rating reserve</b> and the <b>category limits</b>.</li></ul></div>
    <div class="rc"><h4>Category limits</h4>
      <table class="rt"><tr><th>Group</th><th class="n">Round 1 limit</th><th>Within the group</th></tr>
       <tr><td>Conqueror</td><td class="n">1</td><td>Vanguard or Core, not both</td></tr>
-      <tr><td>Dominator</td><td class="n">3</td><td>Dominator Apex at most 1</td></tr>
+      <tr><td>Dominator</td><td class="n">3</td><td>Dominator Apex at most 1 · 4th place (Dominator Core) for a team with no Conqueror</td></tr>
+      <tr><td>Top tier</td><td class="n">4</td><td>Conqueror + Dominator, the same for every team</td></tr>
       <tr><td>Rising Star</td><td class="n">10</td><td>Elite at most 7 · Core at most 4</td></tr></table>
-     <p><b>Every round:</b> never more than <b>6 Conquerors + Dominators</b>, so every team has at least 8 Rising Stars. Owner and drafted players count in all limits.</p></div>
+     <p><b>Extra place:</b> opens once every Conqueror has been called (both rounds). A team that uses it can't buy a Conqueror later in Round 1; a team with a Conqueror can't use it.</p>
+     <p><b>Where they apply:</b> 1st rounds of the Conqueror, Dominator and Rising Star Elite pools, and Rising Star Core players in the Rising Star Core pool. They are <b>not squad limits</b>: in 2nd rounds any team can buy, even a 2nd Conqueror or Apex.</p>
+     <p><b>Always:</b> never more than <b>6 Conquerors + Dominators</b>, so every team has at least 8 Rising Stars. Owner and drafted players count in all limits.</p></div>
    <div class="rc"><h4>Categories and base points</h4>
      <table class="rt"><tr><th>Category</th><th class="n">Skill Rating</th><th class="n">Base Point</th><th class="n">Base Price</th></tr>
       <tr><td>Conqueror Vanguard</td><td class="n">85–100</td><td class="n">12,000</td><td class="n">₹10,000</td></tr>
@@ -254,20 +258,23 @@ dialog::backdrop{background:rgba(5,8,14,.6)}
      <p class="mut">Conqueror or Dominator needs 8+ MVP-list matches; otherwise Rising Star Elite.</p></div>
    <div class="rc"><h4>Bid increments</h4>
      <table class="rt"><tr><th>Current bid</th><th class="n">Next step</th></tr>
-      <tr><td>1,000 – 2,000</td><td class="n">+100</td></tr><tr><td>2,000 – 8,000</td><td class="n">+200</td></tr>
-      <tr><td>8,000 – 10,000</td><td class="n">+400</td></tr><tr><td>Above 10,000</td><td class="n">+500</td></tr></table>
-     <p class="mut">No maximum bid; only the reserves limit it.</p></div>
-   <div class="rc wide"><h4>The four rounds</h4>
+      <tr><td>Below 4,000</td><td class="n">+100</td></tr><tr><td>From 4,000</td><td class="n">+200</td></tr>
+      <tr><td>From 6,000</td><td class="n">+250</td></tr><tr><td>From 8,000</td><td class="n">+400</td></tr><tr><td>From 10,000</td><td class="n">+500</td></tr></table>
+     <p class="mut">3,900 → 4,000 → 4,200 · 9,600 → 10,000 → 10,500. No maximum bid; only the reserves limit it.</p></div>
+   <div class="rc wide"><h4>Calling order</h4>
      <div class="steps">
-      <div><b>Round 1 · Category pools</b>Every player called once, top categories first: Conqueror Vanguard → Conqueror Core → Dominator Apex → Dominator Core → Rising Star Elite → Rising Star Core. Order by lot; a Conqueror or Dominator pool with fewer than 10 expected unsold is called by rank, highest Skill Rating first. Pools under 5 players join the next lower pool. Category limits apply.</div>
-      <div><b>Round 2 · Second chance</b>Unsold players, nominated by teams, at a base point one category lower (Rising Star Core stays 2,000). Category and rating don't change. No category limits except max 6 C+D. Every team should reach 14.</div>
-      <div><b>Round 3 · Complete squads</b>Only teams still short of 14 bid. Short of points: release the player bought for the highest bid. Short of rating room: release the highest-rated player bought. Never the owner or drafted players.</div>
+      <div><b>Steps 1–2 · Conquerors</b>1st round by Skill Rating, highest first, at the category Base Point, Round 1 limits. Straight after: 2nd round for the unsold at the next lower category's Base Point (CV 10,000 · CC 8,000), max 6 C+D only. Only if Conquerors remain after the draft.</div>
+      <div><b>Steps 3–4 · Dominators</b>1st round by Skill Rating at Base Point, Round 1 limits. 2nd round for the unsold (DA 6,000 · DC 4,000), max 6 C+D only.</div>
+      <div><b>Steps 5–6 · Rising Star Elite</b>1st round by Skill Rating at 4,000, Round 1 limits. 2nd round for the unsold at 2,000, no category limits.</div>
+      <div><b>Steps 7–8 · Rising Star Core pool</b>Rising Star Core players + every player still unsold, by random lot at 2,000. Round 1 limits for Rising Star Core players only. Then a 2nd round for the unsold. A Rising Star Core auction assistant is called at the end of Step 7.</div>
+      <div><b>Round 3 · Complete squads</b>Only teams still short of 14; random lot at 2,000; max 6 C+D, cap and purse only. Short of points: release the player bought for the highest bid; short of rating room: the highest-rated. Never the owner or drafted players.</div>
       <div><b>Round 4 · Cash bid</b>Only for released players. Closed cash bid, minimum the category Base Price; the winner takes him as a 15th player. The releasing team can't bid.</div>
-     </div></div>
-   <div class="rc"><h4>Ties</h4><ul><li>Two or more teams reach the same highest bid they are allowed and cannot go higher: <b>closed cash bid</b> by those teams only.</li><li>Minimum offer: the player's category Base Price. Highest offer wins at the tied points; equal offers: draw of lots.</li></ul></div>
-   <div class="rc"><h4>After the auction</h4><ul><li>Unsold players form the reserve pool (not given to teams by lot).</li><li>After KNPL-7 and KNPL-8: keep 6 (owner included), retention cap 300 on new ratings, buy 8 at the next auction.</li><li>Anything not covered: KNPL Core Committee decides; its decision is final.</li></ul></div>
+     </div>
+     <p class="mut">Same Skill Rating: order by a lot drawn before the auction (published). A group with fewer than 5 players joins the next lower group. Category and rating never change; only the opening bid drops.</p></div>
+   <div class="rc"><h4>Ties</h4><ul><li>When the current bid equals the highest bid another team is allowed, <b>ask before closing</b> whether that team also wants the player at the same amount. The first team to reach it does not win automatically.</li><li>If yes: <b>closed cash bid</b> by those teams only.</li><li>Minimum offer: the player's category Base Price. Highest offer wins at the tied points; equal offers: draw of lots.</li></ul></div>
+   <div class="rc"><h4>After the auction</h4><ul><li>Unsold players form the reserve pool (not given to teams by lot).</li><li>Season replacement: only from the reserve pool, whole season, rating ≤ the player replaced; ₹500 paid by the replacement to the replaced player.</li><li>After KNPL-7 and KNPL-8: keep exactly 6 (owner included) within 300 Skill Rating and 84,000 points, buy 8 at the next auction.</li><li>Anything not covered: KNPL Core Committee decides; its decision is final.</li></ul></div>
   </div>
-  <p class="note">Summary of the KNPL-7 Mega Auction Rules. Full text: KNPL-7 Mega Auction Rule Book (English and Malayalam).</p>
+  <p class="note">Summary of the KNPL-7 Mega Auction Rules. Full text: KNPL-7 Mega Auction Rule Book, Revision 3A (23-11-2026).</p>
  </div>
 </section>
 <section class="page" id="v-rsm" hidden>
@@ -277,9 +284,9 @@ dialog::backdrop{background:rgba(5,8,14,.6)}
    <div class="rc big"><div class="num">8+</div><h4>Playing 12</h4><p>At least <b>8 Rising Stars</b> (2 of them Rising Star Core). At most <b>4 Conquerors + Dominators</b>, and only <b>1 Conqueror</b>.</p></div>
    <div class="rc big"><div class="num">C</div><h4>Captain</h4><p>Must be a <b>Rising Star</b>.</p></div>
    <div class="rc big"><div class="num">1·2·3</div><h4>Batting</h4><p>Openers and No. 3 are <b>Rising Stars</b>. The Conqueror bats at <b>No. 5 or lower</b>.</p></div>
-   <div class="rc big"><div class="num">6</div><h4>Retired out</h4><p>Only after facing <b>at least 6 balls</b>.</p></div>
+   <div class="rc big"><div class="num">✕</div><h4>Retired out</h4><p><b>No retired out</b> in the RSM match.</p></div>
    <div class="rc big"><div class="num">6/10</div><h4>Bowling</h4><p>Rising Stars bowl <b>at least 6 of the 10 overs</b>, including the <b>1st and 10th</b>.</p></div>
-   <div class="rc big"><div class="num">IP</div><h4>Impact Player</h4><p>Must be a <b>Rising Star</b>.</p></div>
+   <div class="rc big"><div class="num">IP</div><h4>Impact Player</h4><p>Must be a <b>Rising Star</b> (in normal matches: any category).</p></div>
    <div class="rc big"><div class="num">★</div><h4>Rising Star of the Match</h4><p>The top Rising Star in the match MVP list. If he is also Player of the Match, the award goes to the next Rising Star.</p></div>
    <div class="rc big"><div class="num">&lt;8</div><h4>Fewer than 8 available</h4><p>All available Rising Stars play; the match referee decides the rest.</p></div>
   </div>
@@ -321,18 +328,24 @@ dialog::backdrop{background:rgba(5,8,14,.6)}
 </dialog>
 <script>
 const SPA_ORIGIN="https://superplayerauction.com";
-const RULES={squad:14,cap:560,bonus:25,reserve:2000,lim:{C:1,D:3,DA:1,R:10,RSE:7,RSC:4,CD:6}};
+const RULES={squad:14,cap:560,bonus:25,reserve:2000,lim:{C:1,D:3,DA:1,TOP:4,R:10,RSE:7,RSC:4,CD:6}};
 const CAT={"Conqueror Vanguard":["CV","C","#e9cf8f"],"Conqueror Core":["CC","C","#e2b86b"],"Dominator Apex":["DA","D","#a9c7ec"],"Dominator Core":["DC","D","#c3d4ee"],"Rising Star Elite":["RSE","R","#a6dcbc"],"Rising Star Core":["RSC","R","#cfe9d9"]};
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fmt=n=>(+n||0).toLocaleString('en-IN');
 const norm=s=>String(s||"").toUpperCase().replace(/\(.*?\)/g,"").replace(/[^A-Z]/g,"");
-const normTeam=s=>norm(s).replace(/^THE/,"").replace(/MITHILAS/,"MIDHILAS").replace(/CHITRAKOOT/,"CHITHRAKOOT");
+const normTeam=s=>norm(s).replace(/^THE/,"").replace(/MIDHILAS/,"MITHILAS").replace(/CHITRAKOOT/,"CHITHRAKOOT");
 let DATA=[], BYID={}, AVG_RSC=19, AUC=null; const AUC_ID='KNPL7-0224', AUC_NAME='Ajaya Ghosh';
 let TAB=(()=>{try{return localStorage.getItem('aucTab')||'parts'}catch(e){return 'parts'}})();
 const ST={log:[],view:null,on:false,at:0,cur:null,curInfo:null,bid:0,bidteam:"",teams:{},squads:{},prev:null,bidding:false,timer:null,lastBidAt:0};
 const LOWER={CV:10000,CC:8000,DA:6000,DC:4000,RSE:2000,RSC:2000};
-function baseFor(p){ return +$('round').value>1 ? (LOWER[catOf(p.c)[0]]||p.bt) : p.bt; }
+function baseFor(p){ const r=+$('round').value; return r===1? p.bt : r===2? (LOWER[catOf(p.c)[0]]||p.bt) : 2000; }
+// Round 1 limits apply in 1st rounds, and to Rising Star Core players in the Rising Star Core pool (Rule 7.2)
+function r1Applies(p){ const r=+$('round').value; return r===1 || (r===3 && p && catOf(p.c)[0]==="RSC"); }
+// Rule 7.1A: the extra Dominator Core place opens once every Conqueror has been called
+function cOpen(){ return $('cDone').checked; }
+// Rule 6.4: average Skill Rating of the Rising Star Core players still available, rounded up
+function avgRSC(){ const sold=new Set(Object.values(ST.squads).flat().map(x=>x.id)); const r=DATA.filter(p=>p.c==="Rising Star Core" && !sold.has(p.id)).map(p=>p.s); return r.length? Math.ceil(r.reduce((a,b)=>a+b,0)/r.length) : AVG_RSC; }
 function catOf(c){ return CAT[c]||[c||"–","","#c9d1de"]; }
 const ICO={title:'<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M17 5h3v2a3 3 0 0 1-3 3M7 5H4v2a3 3 0 0 0 3 3"/>',
  award:'<circle cx="12" cy="9" r="6"/><path d="M8.5 14 7 22l5-3 5 3-1.5-8"/>',
@@ -345,7 +358,8 @@ const ICO={title:'<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M
 const icon=k=>`<svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICO[k]||ICO.rank}</svg>`;
 const PARTS=[['P','Performance',55,'#86a9dd'],['W','Win Impact',15,'#e2a77a'],['Aw','Awards',10,'#e2c27f'],['C','Consistency',10,'#ae9ad8'],['E','Experience',10,'#7fc4b7']];
 const HL_ORDER=['title','award','pom','up','down','new','rank','final'];
-function step(v){ return v<2000?100: v<8000?200: v<10000?400:500; }
+// Rule 9.1 (Rev 3A): +100 below 4,000 · +200 from 4,000 · +250 from 6,000 · +400 from 8,000 · +500 from 10,000
+function step(v){ return v<4000?100: v<6000?200: v<8000?250: v<10000?400:500; }
 function findPlayer(info){
   if(!info) return null;
   const txt=String(info.reg||"");
@@ -364,7 +378,7 @@ function teamEval(t, p, amount){
   const maxBid=places>0? purse-RULES.reserve*(places-1) : 0;
   let ok=places>0, why=places>0?"":"Squad full", catInfo={txt:"–",st:"g",all:""};
   // Skill Rating: squad + this player + average Rising Star Core for each other empty place
-  const after = rat + (p?p.s:0) + AVG_RSC*Math.max(0, places-(p?1:0));
+  const after = rat + (p?p.s:0) + avgRSC()*Math.max(0, places-(p?1:0));
   const srSt = after<=RULES.cap*0.95? "g" : after<=RULES.cap? "o" : after<=RULES.cap+RULES.bonus? "o" : "r";
   const srNeedsBonus = after>RULES.cap && after<=RULES.cap+RULES.bonus;
   const need=Math.max(amount||0, p?baseFor(p):0);
@@ -372,16 +386,17 @@ function teamEval(t, p, amount){
   if(p){
     const [code,g]=catOf(p.c);
     const L=RULES.lim, cons=[];
-    if(round===1){
+    if(r1Applies(p)){
+      if(g==="C"||g==="D") cons.push(["Top 4",k.C+k.D,L.TOP]);
       if(g==="C") cons.push(["C",k.C,L.C]);
-      if(g==="D"){ cons.push(["D",k.D,L.D]); if(code==="DA") cons.push(["Apex",k.DA,L.DA]); }
+      if(g==="D"){ cons.push(["D",k.D,(k.C===0&&cOpen())?L.D+1:L.D]); if(code==="DA") cons.push(["Apex",k.DA,L.DA]); }
       if(g==="R"){ cons.push(["RS",k.R,L.R]); if(code==="RSE") cons.push(["Elite",k.RSE,L.RSE]); if(code==="RSC") cons.push(["Core",k.RSC,L.RSC]); }
     }
     if(g==="C"||g==="D") cons.push(["C+D",k.C+k.D,L.CD]);
     // tightest constraint: smallest room left
     let tight=null; cons.forEach(c=>{ const room=c[2]-c[1]; if(!tight||room<tight.room) tight={l:c[0],have:c[1],lim:c[2],room}; });
     catInfo = tight? {txt:`${tight.l} ${tight.have}/${tight.lim}`, st: tight.room<=0?"r": tight.room===1?"o":"g", all:cons.map(c=>`${c[0]} ${c[1]}/${c[2]}`).join(" · ")} : {txt:"No limit", st:"g", all:"No category limit for this player in this round"};
-    if(ok && tight && tight.room<=0){ ok=false; why = ({"C+D":"Max 6 C+D",C:"Conqueror limit",D:"Dominator limit",Apex:"Apex limit",RS:"Rising Star limit",Elite:"Elite limit",Core:"Core limit"})[tight.l]||"Category limit"; }
+    if(ok && tight && tight.room<=0){ ok=false; why = ({"C+D":"Max 6 C+D","Top 4":"Top-tier limit (4)",C:"Conqueror limit",D:"Dominator limit",Apex:"Apex limit",RS:"Rising Star limit",Elite:"Elite limit",Core:"Core limit"})[tight.l]||"Category limit"; }
     if(ok && srSt==="r"){ ok=false; why="Skill Rating cap"; }
     if(ok && need>maxBid){ ok=false; why="Over max bid"; }
   }
@@ -426,6 +441,7 @@ function handle(m){
   const newPlayer = (m.player&&m.player.pcode)!==(ST.curInfo&&ST.curInfo.pcode);
   const bidChanged = (m.bid||0)!==ST.bid || (m.bidteam||"")!==ST.bidteam;
   ST.bid=m.bid||0; ST.bidteam=m.bidteam||"";
+  if(newPlayer && !DEMO && !$('cDone').checked){ const np=findPlayer(m.player); if(np && catOf(np.c)[1] && catOf(np.c)[1]!=='C'){ $('cDone').checked=true; try{localStorage.setItem('aucCDone','1')}catch(e){} } }
   if(newPlayer){ if(document.querySelector('main').hidden) document.querySelector('[data-view=desk]').click(); ST.log=[]; ST.curInfo=m.player||null; ST.cur=findPlayer(m.player); logBid(); clearTimeout(ST.timer); ST.bidding=false; renderPlayer(ST.cur, ST.curInfo); renderTeams(true); renderStrip(); return; }
   if(bidChanged){ logBid(); if(ST.cur && ST.view===ST.cur) renderPlayer(ST.cur, ST.curInfo); if(ST.bid) onBid(); }
   renderStrip();
@@ -468,8 +484,8 @@ function renderPlayer(p, info){
     else vline=`<div class="vb bad">${icon('x')}<span><b>NOT VALID</b> · ${esc(cur.why)}${cur.why==="Over max bid"?` (max ${fmt(Math.max(0,cur.max))})`:""}<br>Reset to ${lv?`<b>${fmt(lv.bid)}</b> · ${esc(lv.team)}`:`base <b>${fmt(pb)}</b>`}</span></div>`;
   }
   const recent = live && ST.log.length>1? `<div class="blog">${ST.log.slice(-6).reverse().map(x=>`<span class="${x.ok?'ok':'bad'}" title="${esc(x.team)}${x.ok?'':' · '+esc(x.why)}">${fmt(x.bid)} ${esc(short(x.team))}</span>`).join("")}</div>`:"";
-  const bid = live? `<div class="bidbox live ${cur&&!cur.ok?'inv':''}"><div class="lab">Current bid</div><div class="bid">${ST.bid?fmt(ST.bid):"–"}</div><div class="lead">${esc(ST.bidteam||"No bid yet")}</div>${vline}<div class="subrow"><span>Next bid <b>${fmt(nb)}</b></span><span>Base <b>${fmt(pb)}</b>${pb!==p.bt?' (R'+$('round').value+')':''}</span></div>${recent}</div>`
-    : `<div class="bidbox"><div class="lab">Base point${pb!==p.bt?' · Round '+$('round').value+' (one category lower)':''}</div><div class="bid">${fmt(pb)}</div><div class="subrow"><span>Base price <b>₹${fmt(p.bp)}</b></span></div></div>`;
+  const bid = live? `<div class="bidbox live ${cur&&!cur.ok?'inv':''}"><div class="lab">Current bid</div><div class="bid">${ST.bid?fmt(ST.bid):"–"}</div><div class="lead">${esc(ST.bidteam||"No bid yet")}</div>${vline}<div class="subrow"><span>Next bid <b>${fmt(nb)}</b></span><span>Base <b>${fmt(pb)}</b>${pb!==p.bt?' ('+$('round').selectedOptions[0].text+')':''}</span></div>${recent}</div>`
+    : `<div class="bidbox"><div class="lab">Base point${pb!==p.bt?' · '+$('round').selectedOptions[0].text:''}</div><div class="bid">${fmt(pb)}</div><div class="subrow"><span>Base price <b>₹${fmt(p.bp)}</b></span></div></div>`;
   const hl=[...p.hl].sort((a,b)=>HL_ORDER.indexOf(a[0])-HL_ORDER.indexOf(b[0]));
   const chips=hl.map(([k,t])=>`<span class="k-${k}">${icon(k)}${esc(t)}</span>`).concat(p.sales.map(x=>`<span class="k-sale">${icon('sale')}${esc(x.a.replace('KNPL auction ','KNPL '))}: ${esc(x.team)} · ${fmt(x.pts)} pts</span>`));
   const tiles=[["Matches",s.m,""],["Runs",fmt(s.runs),`avg ${s.avg}`],["Best",s.hs,`${s.h50}×50 · ${s.h100}×100`],["Sixes",s.s6,`${s.f4} fours`],["Wickets",s.wk,`${s.ov} overs`],["Catches",s.ct,""],["MVP points",s.mvp,""],["Player of Match",s.pom,""]];
@@ -501,21 +517,21 @@ function renderTeams(force){
   if(ST.bidding && !force){ box.classList.add('frozen'); hint.innerHTML=`<span class="warn">Bidding… refreshes after a ${$('pause').value} s pause</span>`; return; }
   box.classList.remove('frozen');
   const rows=teamRows(), lead=normTeam(ST.bidteam), p=ST.view, can=rows.filter(r=>r.ok).length;
-  hint.innerHTML = p? `<span class="ok"><b>${can}</b> can bid</span> · <span class="bad"><b>${rows.length-can}</b> cannot</span> · ${esc(catOf(p.c)[0])} · ${$('round').value==="1"?"Round 1 limits":"Round "+$('round').value+": only max 6 C+D"}` : "";
+  hint.innerHTML = p? `<span class="ok"><b>${can}</b> can bid</span> · <span class="bad"><b>${rows.length-can}</b> cannot</span> · ${esc(catOf(p.c)[0])} · ${r1Applies(p)?"Round 1 limits"+(cOpen()?" · extra DC place open":""):"No category limits: only max 6 C+D"}` : "";
   const SRC={g:"st-g",o:"st-o",r:"st-r"};
   const yes=rows.filter(r=>r.ok), no=rows.filter(r=>!r.ok);
-  const row=r=>`<tr class="${normTeam(r.t)===lead&&lead?'leadrow':''} ${r.ok?'':'no'}"><td><div class="tcell"><div class="tname" title="${esc(r.t)}">${esc(r.t)}</div>${cocBadge(r.t)}</div></td><td class="n">${r.n}/${RULES.squad}</td><td class="n"><span class="st ${SRC[r.ptSt]}" title="Points left ${fmt(r.purse)} minus ${fmt(RULES.reserve)} for each other empty place">${fmt(Math.max(0,r.maxBid))}</span></td><td class="n"><span class="st ${SRC[r.catInfo.st]}" title="${esc(r.catInfo.all)}">${esc(r.catInfo.txt)}</span></td><td class="n"><span class="st ${SRC[r.srSt]}" title="Now ${r.rat}. With this player and ~${AVG_RSC} for each other empty place: ${Math.round(r.after)}">${r.rat}<small>/${RULES.cap}${r.srNeedsBonus?" +25":""}</small></span></td><td>${r.ok?'<span class="yes">Yes</span>':`<span class="nob">${esc(r.why)}</span>`}</td></tr>`;
+  const row=r=>`<tr class="${normTeam(r.t)===lead&&lead?'leadrow':''} ${r.ok?'':'no'}"><td><div class="tcell"><div class="tname" title="${esc(r.t)}">${esc(r.t)}</div>${cocBadge(r.t)}</div></td><td class="n">${r.n}/${RULES.squad}</td><td class="n"><span class="st ${SRC[r.ptSt]}" title="Points left ${fmt(r.purse)} minus ${fmt(RULES.reserve)} for each other empty place">${fmt(Math.max(0,r.maxBid))}</span></td><td class="n"><span class="st ${SRC[r.catInfo.st]}" title="${esc(r.catInfo.all)}">${esc(r.catInfo.txt)}</span></td><td class="n"><span class="st ${SRC[r.srSt]}" title="Now ${r.rat}. With this player and ~${avgRSC()} for each other empty place: ${Math.round(r.after)}">${r.rat}<small>/${RULES.cap}${r.srNeedsBonus?" +25":""}</small></span></td><td>${r.ok?'<span class="yes">Yes</span>':`<span class="nob">${esc(r.why)}</span>`}</td></tr>`;
   const head=`<tr><th>Team</th><th class="n">Squad</th><th class="n">Max bid</th><th class="n">Category</th><th class="n">SR / cap</th><th>Bid?</th></tr>`;
   const strip = no.length? `<div class="nostrip"><span class="lab" style="color:#f0b2b2">Cannot bid · warn</span>${no.map(r=>`<span title="${esc(r.t)}"><b>${esc(r.t)}</b> · ${esc(r.why)}</span>`).join("")}</div>` : (p?`<div class="nostrip ok"><span class="lab" style="color:var(--ok)">All teams can bid</span></div>`:"");
   box.innerHTML=strip+`<table>${head}
    ${yes.length?`<tr class="sec sec-y"><td colspan="6">${icon('ok')} Can bid · ${yes.length}</td></tr>${yes.map(row).join("")}`:""}
    ${no.length?`<tr class="sec sec-n"><td colspan="6">${icon('x')} Cannot bid · ${no.length} — warn if they bid</td></tr>${no.map(row).join("")}`:""}</table>
    <div class="legend"><span class="st st-g">Room</span><span class="st st-o">Last place / nearing</span><span class="st st-r">Full / over</span></div>
-   <div class="note"><b>Category</b> shows the tightest limit for this player: Round 1 group limits (Conqueror 1 · Dominator 3, Apex 1 · Rising Star 10, Elite 7, Core 4) and, in every round, max 6 Conquerors + Dominators. <b>Max bid</b> = points left minus ${fmt(RULES.reserve)} for each other empty place (use it as the team's limit on Super Player Auction). <b>Skill Rating</b> = squad total / ${RULES.cap}; colour adds this player and ~${AVG_RSC} for each other empty place (+25 = only with the one-time bonus).</div>`;
+   <div class="note"><b>Category</b> shows the tightest limit for this player: Round 1 limits in 1st rounds (top tier 4: Conqueror 1 + Dominator 3, Apex 1; a team with no Conqueror gets a 4th Dominator place once every Conqueror has been called · Rising Star 10, Elite 7, Core 4) and, always, max 6 Conquerors + Dominators. <b>Max bid</b> = points left minus ${fmt(RULES.reserve)} for each other empty place (use it as the team's limit on Super Player Auction). <b>Skill Rating</b> = squad total / ${RULES.cap}; colour adds this player and ~${avgRSC()} for each other empty place (+25 = only with the one-time bonus).</div>`;
 }
 
 /* ---------- Code of Conduct marks against teams (saved on this device) ---------- */
-const K7=["Ayodhya Warriors","Devils of Chithrakoot","Gandhara Giants","Guardians of Kamboja","Jaguars of Jhansi","Kaaliyanz of Dwaraka","Kalinga United","Knights of Kanchi","Kombans of Pataleeputhra","Kurukshetra Yodhas","Madhura Mavericks","Mighty Midhilas","Panchaala Panthers","Spartans of Nalanda","Vamos Vrindavan","Varahas of Vijayanagara"];
+const K7=["Ayodhya Warriors","Devils of Chithrakoot","Gandhara Giants","Guardians of Kamboja","Jaguars of Jhansi","Kaaliyanz of Dwaraka","Kalinga United","Knights of Kanchi","Kombans of Pataleeputhra","Kurukshetra Yodhas","Madhura Mavericks","Mighty Mithilas","Panchaala Panthers","Spartans of Nalanda","Vamos Vrindavan","Varahas of Vijayanagara"];
 let COC=(()=>{ try{ const c=JSON.parse(localStorage.getItem('knplCoC2')||'{}'); return c&&typeof c==='object'?c:{}; }catch(e){ return {}; } })();
 const cocKey=t=>K7.find(x=>normTeam(x)===normTeam(t))||t;
 const cocN=t=>(COC[cocKey(t)]||[]).length;
@@ -552,11 +568,11 @@ $('cocClear').onclick=()=>{ if(!Object.keys(COC).length) return; if(confirm('Cle
 /* ---------- demo preview (sample data, never the real auction) ---------- */
 let DEMO=null;
 function startDemo(){
-  const TEAMS=["Kombans of Pataleeputhra","Madhura Mavericks","Mighty Midhilas","Kalinga United","Varahas of Vijayanagara","Kaaliyanz of Dwaraka","Guardians of Kamboja","Ayodhya Warriors","Jaguars of Jhansi","Gandhara Giants","Devils of Chithrakoot","Kurukshetra Yodhas","Vamos Vrindavan","Knights of Kanchi","Spartans of Nalanda","Panchaala Panthers"];
+  const TEAMS=["Kombans of Pataleeputhra","Madhura Mavericks","Mighty Mithilas","Kalinga United","Varahas of Vijayanagara","Kaaliyanz of Dwaraka","Guardians of Kamboja","Ayodhya Warriors","Jaguars of Jhansi","Gandhara Giants","Devils of Chithrakoot","Kurukshetra Yodhas","Vamos Vrindavan","Knights of Kanchi","Spartans of Nalanda","Panchaala Panthers"];
   const by=c=>DATA.filter(p=>p.c===c);
   const pool={CV:by("Conqueror Vanguard"),CC:by("Conqueror Core"),DA:by("Dominator Apex"),DC:by("Dominator Core"),RSE:by("Rising Star Elite"),RSC:by("Rising Star Core")};
   const take=c=>pool[c].shift();
-  const plans=[["CV","DC","RSE"],["CC","DA","DC","DC","RSE","RSE","RSE","RSC"],["DC","RSE"],["CV","DA","DC","DC","DC","RSE"],["CC","DC","RSE","RSE"],["DA","RSE","RSC"],["CV","DC"],["DC","DC","RSE","RSE","RSE","RSE","RSE","RSE","RSE","RSC"],["CC","DA","DC","RSE","RSE","RSE","RSE","RSE","RSE","RSE","RSC"],["DC","RSE","RSC"],["CV","RSE"],["DA","DC","RSE","RSE","RSC"],["RSE","RSC"],["CC","DC","DC","RSE","RSE"],["DC","DC","RSE"],["CV","DA","RSE","RSE","RSE"]];
+  const plans=[["CV","DC","RSE"],["CC","DA","DC","DC","RSE","RSE","RSE","RSC"],["DC","RSE"],["CV","DA","DC","DC","RSE","RSE"],["CC","DC","RSE","RSE"],["DA","RSE","RSC"],["CV","DC"],["DC","DC","RSE","RSE","RSE","RSE","RSE","RSE","RSE","RSC"],["CC","DA","DC","RSE","RSE","RSE","RSE","RSE","RSE","RSE","RSC"],["DC","RSE","RSC"],["CV","RSE"],["DA","DC","RSE","RSE","RSC"],["RSE","RSC"],["CC","DC","DC","RSE","RSE"],["DC","DC","RSE"],["CV","DA","RSE","RSE","RSE"]];
   const purse=[61000,30500,72000,26500,48000,70000,62000,24000,21000,69000,58000,40000,80000,36000,66000,33000];
   const players=[], T={};
   TEAMS.forEach((t,i)=>{ plans[i].forEach(c=>{ const p=take(c); if(p) players.push({pcode:'d'+p.id,name:p.n,reg:p.id,team:t}); }); T[t]={rm:purse[i],n:plans[i].length}; });
@@ -597,6 +613,8 @@ $('q').addEventListener('keydown',e=>{
 $('sug').addEventListener('click',e=>{ const b=e.target.closest('button[data-i]'); if(b) pick(SUG[+b.dataset.i]); });
 $('qGo').onclick=search;
 document.addEventListener('click',e=>{ if(!e.target.closest('.sbar')) $('sug').style.display='none'; });
+$('cDone').checked=(()=>{try{return localStorage.getItem('aucCDone')==='1'}catch(e){return false}})();
+$('cDone').onchange=()=>{ try{localStorage.setItem('aucCDone',$('cDone').checked?'1':'0')}catch(e){} if(ST.view) renderPlayer(ST.view, ST.view===ST.cur?ST.curInfo:null); renderTeams(true); };
 $('round').onchange=()=>{ if(ST.view) renderPlayer(ST.view, ST.view===ST.cur?ST.curInfo:null); renderTeams(true); };
 function renderStrip(){ const b=$('liveStrip'); if(!ST.curInfo || ST.view===ST.cur){ b.style.display='none'; return; }
   b.style.display=''; b.textContent=`● On the block: ${ST.cur?ST.cur.n:(ST.curInfo.name||'')} · ${ST.bid?fmt(ST.bid)+' '+ST.bidteam:'no bid'} — show`; }

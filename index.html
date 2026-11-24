@@ -639,7 +639,7 @@ function renderLive(){
      <div class="row" style="justify-content:space-between"><div><div class="mut sm">${esc(p.id)} · ${esc(p.district||"")} · call #${callNo(p)||"–"} ${S.unsold[p.id]?"· unsold before":""}</div>
        <div class="cond" style="font-size:30px;font-weight:800;color:var(--gold2)">${esc(p.name)}</div>
        <div class="row">${tag(p.cat)} <b>SR ${p.rating}</b> ${m.role?`<span class="tag t-x">${esc(ROLEN[m.role])}</span>`:""} ${isLeft(p)?'<span class="tag t-x">LH</span>':""} ${m.st==="T"?"★ Target":m.st==="B"?"Backup":m.st==="X"?'<span class="mut">Not for me</span>':""}</div>
-       <div class="mut sm" style="margin-top:4px">${statLine(p)}</div>${m.note?`<div class="sm" style="margin-top:4px">📝 ${esc(m.note)}</div>`:""}</div>
+       <div class="mut sm" style="margin-top:4px">${statLine(p)}</div>${m.note?`<div class="sm" style="margin-top:4px">📝 ${esc(m.note)}</div>`:""}${profHTML(p)}</div>
        <div style="text-align:right"><div class="mut sm">Current bid</div><div class="big">${bid?fmt(bid):"–"}</div><div class="sm">${lead?esc(lead):"no bid yet"}</div></div></div>
      <div class="v ${cls}" style="margin-top:12px"><div style="font-size:22px">${head}</div>${sub.map(x=>`<div class="sm" style="font-weight:500;margin-top:4px">${x}</div>`).join("")}</div>
      <div class="kv" style="margin-top:12px"><div><span>My max</span><b>${myMax?fmt(myMax):"–"}</b></div><div><span>Rule max</span><b>${me.ok?fmt(me.max):"✕"}</b></div><div><span>Plan budget</span><b>${bud.others?fmt(Math.max(0,bud.pts)):"–"}</b></div><div><span>Opening bid</span><b>${fmt(ob)}</b></div></div>
@@ -680,6 +680,14 @@ function handleSPA(m){
 window.addEventListener('message',e=>{ if(e.origin!==SPA_ORIGIN||!e.data||!e.data.mmwr) return; try{ handleSPA(e.data); }catch(err){ console.log(err); } });
 setInterval(()=>{ if(SPA.on && Date.now()-SPA.at>15000){ SPA.on=false; $('lnk').classList.remove('on'); $('lnk').lastElementChild.textContent="Link lost — click the bookmark again"; } },5000);
 
+/* ================= PLAYER PROFILE (from the Auctioneer Desk data) ================= */
+let PROF={};
+fetch('auctioneer/data.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{ if(j&&j.players){ j.players.forEach(p=>PROF[p.id]=p); if(document.querySelector('#v-sim.on')) renderSim(); } }).catch(()=>{});
+function profHTML(p){ const pr=PROF[p.id]; if(!pr) return "";
+  const hl=(pr.hl||[]).slice(0,4).map(([t,x])=>`<span class="tchip" style="border-color:${t==="title"||t==="award"?"rgba(242,177,52,.6)":t==="down"?"rgba(255,107,107,.5)":"var(--line)"}">${esc(x)}</span>`).join("");
+  const se=(pr.seasons||[]).filter(x=>x.m&&x.m!=="–").slice(0,6).map(x=>`<span class="mut">${esc(x.t)}</span> ${esc(x.team)} · ${x.m} m${x.mvp!=null?` · ${x.mvp} MVP`:""}${x.res?` · <b>${esc(x.res)}</b>`:""}`).join("<br>");
+  const sale=(pr.sales||[]).map(x=>`${esc(x.a.replace("KNPL auction ",""))}: ${esc(x.team)} ${fmt(x.pts)}`).join(" · ");
+  return `<div style="margin-top:10px">${pr.sum?`<div class="sm">${esc(pr.sum)}${pr.role?` <span class="mut">· ${esc(pr.role)}</span>`:""}</div>`:""}${hl?`<div class="tchips" style="margin-top:6px">${hl}</div>`:""}${se?`<details style="margin-top:6px"><summary class="mut sm" style="cursor:pointer">Seasons${sale?" and past auction prices":""}</summary><div class="sm" style="margin-top:4px">${se}${sale?`<div class="mut" style="margin-top:4px">${sale}</div>`:""}</div></details>`:""}</div>`; }
 /* ================= PRACTICE AUCTION (simulation) ================= */
 const SIM_DEF={guide:{CV:30000,CC:22000,DA:15000,DC:9500,RSE:5200,RSC:2400},aggr:1,speed:"normal",ff:false};
 const BAND={CV:[85,100],CC:[75,84],DA:[63,74],DC:[50,62],RSE:[25,49],RSC:[0,24]};
@@ -712,62 +720,88 @@ function simQueue(ph){
   if(k==="R3") return TEAMS.some(t=>tstate(t).slots>0)? shuffle(ORDER.map(o=>o.p).filter(free)) : [];
   return [];
 }
+const WAIT=15000;
 function simStart(){
-  clearTimeout(SIM.timer); simCfg();
-  SIM={sales:{},unsold:{},nz:{},pers:{},ph:-1,queue:[],qi:0,cur:null,timer:null,paused:false,log:[],done:false,started:Date.now()};
+  clearTimeout(SIM.timer); clearInterval(SIM.iv); simCfg();
+  SIM={sales:{},unsold:{},nz:{},pers:{},ph:-1,queue:[],qi:0,cur:null,timer:null,iv:null,paused:false,log:[],done:false,started:Date.now()};
   TEAMS.forEach(t=>SIM.pers[t]=rnd(0.88,1.15));
-  MODE='sim'; TSC={}; RES={pt:minBase(),sr:avgRSC()}; simNext();
+  MODE='sim'; TSC={}; RES={pt:minBase(),sr:avgRSC()}; SIM.iv=setInterval(simStep,250); simNext();
 }
+function simReset(){ clearTimeout(SIM.timer); clearInterval(SIM.iv); SIM={sales:{},unsold:{}}; MODE='real'; TSC={}; RES={pt:minBase(),sr:avgRSC()}; renderPlanBar(); renderSim(); toast("Practice auction reset — every practice buy is back in the pool; owners and draft marks stay"); }
 function simNext(){
   SIM.cur=null;
-  while(SIM.qi>=SIM.queue.length){ SIM.ph++; const ph=simPhases()[SIM.ph]; if(!ph){ SIM.done=true; renderSim(); return; } SIM.queue=simQueue(ph); SIM.qi=0; }
+  while(SIM.qi>=SIM.queue.length){ SIM.ph++; const ph=simPhases()[SIM.ph]; if(!ph){ SIM.done=true; clearInterval(SIM.iv); renderSim(); return; } SIM.queue=simQueue(ph); SIM.qi=0; }
   const p=SIM.queue[SIM.qi++], ph=simPhases()[SIM.ph];
-  SIM.cur={p,stage:ph[1],label:ph[2],no:SIM.qi,of:SIM.queue.length,bid:0,lead:"",going:0,myPass:false,hist:[]};
-  renderSim(); simSched(1.4);
+  SIM.cur={p,stage:ph[1],label:ph[2],no:SIM.qi,of:SIM.queue.length,bid:0,lead:"",lastAt:Date.now(),ai:null,myPass:false,hist:[]};
+  renderSim(); simPlanAI(true);
 }
-function simSched(f){ clearTimeout(SIM.timer); if(SIM.paused||SIM.done) return; const c=simCfg(), cur=SIM.cur;
-  let ms=SPEED[c.speed]*(f||1); if(c.ff && cur && !simMarked(cur.p) && cur.lead!==MY) ms*=0.25; SIM.timer=setTimeout(simTick,ms); }
 const simMarked=p=>{ const m=mk(p.id); return m.st==="T"||m.st==="B"||m.max>0; };
-function simTick(){
-  const cur=SIM.cur; if(!cur||SIM.paused) return;
-  const p=cur.p, next=cur.bid? cur.bid+bidStep(cur.bid) : openBid(p,cur.stage);
-  const want=TEAMS.filter(t=>t!==MY && t!==cur.lead).map(t=>{ const ev=evalTeam(t,p,cur.stage); if(!ev.ok||ev.max<next) return null; const v=aiValue(t,p,cur.stage,ev); return v>=next?{t,m:(v-next)*rnd(0.4,1)}:null; }).filter(Boolean);
-  if(want.length){ want.sort((a,b)=>b.m-a.m); cur.bid=next; cur.lead=want[0].t; cur.going=0; cur.hist.push([next,cur.lead]); renderSim(); simSched(1); return; }
-  cur.going++;
-  const quick=(cur.myPass||(simCfg().ff&&!simMarked(p)))&&cur.lead!==MY;
-  if(cur.going<=3 && !(quick && cur.going>1)){ renderSim(); simSched(1.5); return; }
+const simNextBid=cur=>cur.bid? cur.bid+bidStep(cur.bid) : openBid(cur.p,cur.stage);
+// which computer team wants to bid next (null = nobody at this price)
+function aiWant(cur){
+  const p=cur.p, next=simNextBid(cur);
+  const w=TEAMS.filter(t=>t!==MY && t!==cur.lead).map(t=>{ const ev=evalTeam(t,p,cur.stage); if(!ev.ok||ev.max<next) return null; const v=aiValue(t,p,cur.stage,ev); return v>=next?{t,m:(v-next+500)*rnd(0.3,1)}:null; }).filter(Boolean);
+  return w.sort((a,b)=>b.m-a.m)[0]||null;
+}
+// computer teams answer after a human-like pause; now and then one waits until late in the 15 seconds
+function simPlanAI(first){
+  const cur=SIM.cur; if(!cur||cur.closed) return; const w=aiWant(cur); if(!w){ cur.ai=null; return; }
+  const c=simCfg(); let d=Math.random()<0.18? rnd(5,11) : rnd(1,3.5); if(first) d+=1;
+  d*=({fast:0.5,normal:1,slow:1.6})[c.speed]||1; if(c.ff && !simMarked(cur.p) && cur.lead!==MY) d*=0.3;
+  cur.ai={t:w.t,at:Date.now()+d*1000};
+}
+function simWait(cur){ const c=simCfg(); return (cur.myPass || (c.ff && !simMarked(cur.p))) && cur.lead!==MY && !cur.ai ? 2500 : WAIT; }
+function simStep(){
+  const cur=SIM.cur; if(SIM.paused||!cur||cur.closed) return; const now=Date.now();
+  if(cur.ai && now>=cur.ai.at){ const w=aiWant(cur); if(w){ simPlace(w.t); return; } cur.ai=null; }
+  const left=simWait(cur)-(now-cur.lastAt);
+  if(left<=0){ simClose(); return; }
+  const el=$('sClock'); if(el){ const sec=Math.ceil(left/1000), pct=Math.max(0,Math.min(100,left/WAIT*100));
+    el.innerHTML=`<div class="row" style="justify-content:space-between"><b class="${sec<=5?"bad":"warn"}" style="font-size:18px">⏱ ${sec} s</b><span class="mut sm">${cur.lead?`sold to ${esc(short(cur.lead))} if no new bid`:"unsold if no bid"}</span></div><div style="height:6px;background:#0b1220;border-radius:4px;margin-top:4px"><i style="display:block;height:100%;width:${pct}%;background:${sec<=5?"var(--red)":"var(--gold)"};border-radius:4px"></i></div>`; }
+}
+function simPlace(team){ const cur=SIM.cur, next=simNextBid(cur); cur.bid=next; cur.lead=team; cur.lastAt=Date.now(); cur.hist.push([next,team]); if(team===MY) cur.myPass=false; simPlanAI(); renderSim(); }
+function simClose(){
+  const cur=SIM.cur, p=cur.p; cur.closed=true; cur.ai=null;
   if(cur.lead){ SIM.sales[p.id]={team:cur.lead,price:cur.bid}; SIM.log.unshift([p,cur.lead,cur.bid]); }
   else { SIM.unsold[p.id]=(SIM.unsold[p.id]||0)+1; SIM.log.unshift([p,"",0]); }
   TSC={}; RES={pt:minBase(),sr:avgRSC()};
   if(cur.lead && cur.lead!==MY && mk(p.id).st==="T") toast(`★ Your target ${p.name} went to ${short(cur.lead)} for ${fmt(cur.bid)}`);
   if(cur.lead===MY) toast(`🦏 ${p.name} is yours for ${fmt(cur.bid)}`);
-  cur.closed=true; renderSim(); clearTimeout(SIM.timer); if(!SIM.paused) SIM.timer=setTimeout(simNext, SPEED[simCfg().speed]*1.3);
+  renderSim(); renderPlanBar(); clearTimeout(SIM.timer); SIM.timer=setTimeout(()=>{ if(!SIM.paused) simNext(); }, ({fast:900,normal:1800,slow:2800})[simCfg().speed]||1800);
 }
-function simBid(){ const cur=SIM.cur; if(!cur||cur.closed||cur.lead===MY) return; const p=cur.p, next=cur.bid? cur.bid+bidStep(cur.bid) : openBid(p,cur.stage);
+function simBid(){ const cur=SIM.cur; if(!cur||cur.closed||cur.lead===MY) return; const p=cur.p, next=simNextBid(cur);
   const me=evalTeam(MY,p,cur.stage); if(!me.ok){ toast("We can't bid: "+me.why); return; } if(next>me.max){ toast(`${fmt(next)} is beyond the rules (max ${fmt(me.max)})`); return; }
-  cur.bid=next; cur.lead=MY; cur.going=0; cur.myPass=false; cur.hist.push([next,MY]); renderSim(); simSched(1.2); }
-function simPass(){ const cur=SIM.cur; if(!cur||cur.closed) return; cur.myPass=true; renderSim(); simSched(0.3); }
+  simPlace(MY); }
+function simPass(){ const cur=SIM.cur; if(!cur||cur.closed||cur.lead===MY) return; cur.myPass=true; renderSim(); }
 function renderSim(){
+  const ae=document.activeElement, keep=ae&&ae.id==='sMax'?{v:ae.value,s:ae.selectionStart}:null;
+  renderSim0();
+  if(keep&&$('sMax')){ const x=$('sMax'); x.value=keep.v; x.focus(); try{ x.setSelectionRange(keep.s,keep.s); }catch(e){} }
+}
+function renderSim0(){
   if(MODE!=='sim' && !document.querySelector('#v-sim.on')) return;
   const c=simCfg(), box=$('simBody');
   if(!SIM.started){ box.innerHTML=simSetupHTML(); return; }
   if(SIM.done){ box.innerHTML=simSummaryHTML(); return; }
   const cur=SIM.cur; if(!cur){ box.innerHTML='<div class="card mut">Next player…</div>'; return; }
   const p=cur.p, v=verdict(p,cur.stage,cur.bid,cur.lead), myT=tstate(MY);
-  const going=cur.closed? (cur.lead?`SOLD to ${esc(cur.lead)} for ${fmt(cur.bid)}`:"UNSOLD") : cur.going? ["","Going once…","Going twice…","Last call…"][Math.min(3,cur.going)] : cur.bid? "Bidding…" : `Opening at ${fmt(v.ob)} — any bid?`;
+  const going=cur.closed? (cur.lead?`SOLD to ${esc(cur.lead)} for ${fmt(cur.bid)}`:"UNSOLD") : SIM.paused? "Paused" : cur.bid? "" : `Opens at ${fmt(v.ob)} — any bid?`;
+  const pr=PROF[p.id];
   const canBid=!cur.closed && cur.lead!==MY && v.me.ok && v.next<=v.me.max;
   box.innerHTML=`<div class="row" style="margin-bottom:8px"><b class="cond" style="font-size:20px;color:var(--gold2)">${esc(cur.label)}</b><span class="mut">player ${cur.no} of ${cur.of}</span>
      <span style="margin-left:auto" class="row"><button class="btn sec sm" id="sPause">${SIM.paused?"▶ Resume":"⏸ Pause"}</button>
      <select id="sSpeed">${["fast","normal","slow"].map(x=>`<option value="${x}" ${c.speed===x?"selected":""}>${x[0].toUpperCase()+x.slice(1)}</option>`).join("")}</select>
      <label class="mut sm"><input type="checkbox" id="sFF" ${c.ff?"checked":""}> Fast-forward players I haven't marked</label>
-     <button class="btn sec sm" id="sStop">End practice</button></span></div>
+     <button class="btn sec sm" id="sStop">End and see results</button><button class="btn sec sm" id="sReset">Reset practice auction</button></span></div>
    <div class="grid g2"><div class="card">
-     <div class="row" style="justify-content:space-between;align-items:flex-start"><div>
+     <div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div class="row" style="align-items:flex-start;flex-wrap:nowrap">${pr&&pr.ph?`<img src="data:image/jpeg;base64,${pr.ph}" alt="" style="width:84px;height:106px;object-fit:cover;object-position:top;border-radius:10px;flex:none">`:""}<div>
        <div class="mut sm">${esc(p.id)} · ${esc(p.district||"")} · ${statLine(p)}</div>
        <div class="cond" style="font-size:30px;font-weight:800;color:var(--gold2)">${esc(p.name)}</div>
-       <div class="row">${tag(p.cat)} <b>SR ${p.rating}</b> ${v.m.role?`<span class="tag t-x">${esc(ROLEN[v.m.role])}</span>`:""} ${isLeft(p)?'<span class="tag t-x">LH</span>':""} ${v.m.st==="T"?"★ Target":v.m.st==="B"?"Backup":""}</div>${v.m.note?`<div class="sm" style="margin-top:4px">📝 ${esc(v.m.note)}</div>`:""}</div>
-       <div style="text-align:right"><div class="mut sm">Current bid</div><div class="big">${cur.bid?fmt(cur.bid):"–"}</div><div class="sm ${cur.lead===MY?"ok":""}"><b>${cur.lead?esc(cur.lead):"no bid yet"}</b></div><div class="warn sm" style="margin-top:4px;font-weight:700">${going}</div></div></div>
-     <div class="row" style="margin-top:12px"><button class="btn" id="sBid" style="font-size:18px;padding:12px 22px" ${canBid?"":"disabled"}>🦏 BID ${fmt(v.next)}</button><button class="btn sec" id="sPass" ${cur.closed?"disabled":""}>Pass</button>
+       <div class="row">${tag(p.cat)} <b>SR ${p.rating}</b> ${v.m.role?`<span class="tag t-x">${esc(ROLEN[v.m.role])}</span>`:""} ${isLeft(p)?'<span class="tag t-x">LH</span>':""} ${v.m.st==="T"?"★ Target":v.m.st==="B"?"Backup":""}</div>${v.m.note?`<div class="sm" style="margin-top:4px">📝 ${esc(v.m.note)}</div>`:""}</div></div>
+       <div style="text-align:right;flex:none"><div class="mut sm">Current bid</div><div class="big">${cur.bid?fmt(cur.bid):"–"}</div><div class="sm ${cur.lead===MY?"ok":""}"><b>${cur.lead?esc(cur.lead):"no bid yet"}</b></div><div class="warn sm" style="margin-top:4px;font-weight:700">${going}</div></div></div>
+     ${profHTML(p)}
+     <div id="sClock" style="margin-top:10px"></div>
+     <div class="row" style="margin-top:12px"><button class="btn" id="sBid" style="font-size:20px;padding:14px 26px" ${canBid?"":"disabled"}>🦏 BID UP · ${fmt(v.next)}</button><button class="btn sec" id="sPass" ${cur.closed||cur.lead===MY?"disabled":""} title="Not interested: close quickly if no other team bids">Pass</button>
        <label class="mut sm">My max <input type="number" step="100" id="sMax" value="${v.myMax||""}" style="width:100px"></label></div>
      <div class="v ${v.cls}" style="margin-top:12px"><div style="font-size:19px">${v.head}</div>${v.sub.map(x=>`<div class="sm" style="font-weight:500;margin-top:4px">${x}</div>`).join("")}</div>
      <div class="kv" style="margin-top:10px"><div><span>My max</span><b>${v.myMax?fmt(v.myMax):"–"}</b></div><div><span>Rule max</span><b>${v.me.ok?fmt(v.me.max):"✕"}</b></div><div><span>Plan budget</span><b>${v.bud.others?fmt(Math.max(0,v.bud.pts)):"–"}</b></div><div><span>Points left</span><b>${fmt(myT.purse)}</b></div><div><span>Places left</span><b>${myT.slots}</b></div><div><span>SR room</span><b>${myT.maxSR}</b></div></div>
@@ -778,17 +812,20 @@ function renderSim(){
      <h3 style="margin-top:12px">My squad (${myT.r.length}/14)</h3><div class="sm">${myT.r.map(x=>`${esc(x.p.name)} ${tag(x.p.cat)} ${x.p.rating} <span class="mut">${x.how==="Bought"?fmt(x.pts):x.how}</span>`).join(" · ")}</div>
      <h3 style="margin-top:12px">Last sales</h3><div class="sm">${SIM.log.slice(0,8).map(([q,t,pr])=>`${esc(q.name)} → ${t?`<b class="${t===MY?"ok":""}">${esc(short(t))}</b> ${fmt(pr)}`:'<span class="mut">unsold</span>'}`).join("<br>")||'<span class="mut">none yet</span>'}</div></div></div>`;
   $('sBid').onclick=simBid; $('sPass').onclick=simPass;
-  $('sPause').onclick=()=>{ SIM.paused=!SIM.paused; if(SIM.paused) clearTimeout(SIM.timer); else if(SIM.cur&&SIM.cur.closed) simNext(); else simSched(1); renderSim(); };
+  $('sPause').onclick=simPauseToggle; $('sReset').onclick=()=>{ if(confirm("Reset the practice auction? Every player bought in practice goes back to the pool. Owners and your draft marks stay with their teams.")) simReset(); };
   $('sSpeed').onchange=e=>{ S.cfg.sim.speed=e.target.value; persist(); };
   $('sFF').onchange=e=>{ S.cfg.sim.ff=e.target.checked; persist(); };
-  $('sStop').onclick=()=>{ if(!confirm("End this practice auction and see the results?")) return; clearTimeout(SIM.timer); SIM.done=true; renderSim(); };
+  $('sStop').onclick=()=>{ if(!confirm("End this practice auction and see the results?")) return; clearTimeout(SIM.timer); clearInterval(SIM.iv); SIM.done=true; renderSim(); };
   $('sMax').onchange=e=>{ setMark(p.id,"max",Math.max(0,Math.round(num(e.target.value)/100)*100)); renderSim(); };
 }
+function simPauseToggle(){ SIM.paused=!SIM.paused; const cur=SIM.cur;
+  if(!SIM.paused){ if(!cur||cur.closed){ simNext(); return; } cur.lastAt=Date.now(); simPlanAI(); if(!SIM.iv) SIM.iv=setInterval(simStep,250); }
+  renderSim(); }
 function simSetupHTML(){
   const c=simCfg(), dm=draftMap(), nd=Object.values(dm).reduce((a,l)=>a+l.length,0), tg=targets().length, mx=Object.values(S.marks).filter(m=>m.max).length, rl=Object.values(S.marks).filter(m=>m.role).length;
   const ck=(ok,t,v)=>`<div class="line">${ok?"✔":"○"} ${t} <a href="#" data-go="${v}" class="sm" style="color:var(--gold2)">open</a></div>`;
   return `<div class="grid g2"><div class="card"><h3>Practice auction</h3>
-    <p class="mut" style="margin-top:0">Run the full KNPL-7 auction against the computer. The other 15 teams bid by themselves within every rule (points reserve, Skill Rating cap, Round 1 limits, 6 Conqueror + Dominator) and try to build balanced squads: a Conqueror if they have none, Dominators up to their limit, enough batters, bowlers and all-rounders, and money and rating kept back for the rest of the squad. You bid for the Mavericks. Nothing here touches your real marks or sales, except max bids you change on the way.</p>
+    <p class="mut" style="margin-top:0">Run the full KNPL-7 auction against the computer. The other 15 teams bid by themselves within every rule (points reserve, Skill Rating cap, Round 1 limits, 6 Conqueror + Dominator) and try to build balanced squads: a Conqueror if they have none, Dominators up to their limit, enough batters, bowlers and all-rounders, and money and rating kept back for the rest of the squad. You bid for the Mavericks with <b>BID UP</b>. If no team bids for <b>15 seconds</b>, the player is sold to the last bidder (unsold if nobody bid). When you're done, <b>Reset</b> sends every practice buy back to the pool; owners and your draft marks stay with their teams. Nothing here touches your real sales; max bids you change on the way are kept.</p>
     <h3 style="font-size:16px">Your set-up</h3>
     ${ck(nd>0,`Probable drafts marked: <b>${nd}</b> players across teams`,"draft")}
     ${ck(tg>0,`Targets: <b>${tg}</b> · max bids: <b>${mx}</b> · roles: <b>${rl}</b>`,"pool")}
@@ -810,13 +847,14 @@ function simSummaryHTML(){
      <div class="line" style="margin-top:8px">Squad <b>${me.r.length}/14</b> · points left <b>${fmt(me.purse)}</b> · Skill Rating <b>${me.sr}</b>/560 · C ${me.g.C} · D ${me.g.D} · RS ${me.g.R}</div>
      <div class="line">★ Targets won: <b class="ok">${won.length}</b>${won.length?" ("+won.map(p=>esc(p.name)).join(", ")+")":""} · lost: <b class="bad">${lost.length}</b>${lost.length?" ("+lost.map(p=>`${esc(p.name)} → ${esc(short(SIM.sales[p.id].team))} ${fmt(SIM.sales[p.id].price)}`).join(", ")+")":""}</div>
      ${me.r.length<14?'<div class="line bad">⛔ Squad not complete — in the real auction the highest-priced buy would be released (Rule 8.8).</div>':""}
-     <div class="row" style="margin-top:12px"><button class="btn" id="sAgain">Run another practice auction</button><button class="btn sec" id="sSet">Change set-up</button></div></div>
+     <div class="row" style="margin-top:12px"><button class="btn" id="sAgain">Run another practice auction</button><button class="btn sec" id="sSet">Reset and change set-up</button></div>
+     <div class="mut sm" style="margin-top:6px">Reset releases every practice buy back to the pool. Owners and your draft marks stay with their teams.</div></div>
    <div class="card"><h3>All teams</h3><div class="tw" style="max-height:none"><table><tr><th>Team</th><th class="n">Squad</th><th class="n">Spent</th><th class="n">Left</th><th class="n">SR</th><th>C · D · RS</th><th class="n">Top buy</th></tr>${rows}</table></div></div></div>`;
 }
 document.addEventListener('click',e=>{
   const go=e.target.closest('[data-go]'); if(go){ e.preventDefault(); show(go.dataset.go); return; }
   if(e.target.id==='sStart'||e.target.id==='sAgain'){ simStart(); }
-  if(e.target.id==='sSet'){ SIM={sales:{},unsold:{}}; renderSim(); }
+  if(e.target.id==='sSet'){ simReset(); }
   if(e.target.id==='sDef'){ S.cfg.sim.guide={...SIM_DEF.guide}; persist(); renderSim(); }
 });
 document.addEventListener('change',e=>{ const k=e.target.dataset.guide; if(k){ simCfg().guide[k]=Math.max(BASE_PT[k],Math.round(num(e.target.value))); persist(); }
@@ -907,7 +945,7 @@ function setupData(){
 
 /* ================= NAV AND REFRESH ================= */
 function show(v){ const was=MODE; MODE= v==='sim' && SIM.started && !SIM.done? 'sim' : (v==='sim' && SIM.started ? 'sim' : 'real'); if(MODE!==was){ TSC={}; RES={pt:minBase(),sr:avgRSC()}; renderPlanBar(); }
-  if(v!=='sim' && SIM.timer){ clearTimeout(SIM.timer); SIM.paused=true; }
+  if(v!=='sim' && SIM.started && !SIM.done && !SIM.paused){ SIM.paused=true; }
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v)); document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v)); renderView(v); }
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));
 function renderView(v){ ({draft:renderDraft,pool:renderPool,plan:renderPlan,teams:renderTeams,live:renderLive,sim:renderSim,setup:renderSetup})[v](); }

@@ -122,7 +122,9 @@ body.locked main,body.locked nav,body.locked #planBar{display:none!important}
 <section class="view on" id="v-draft">
   <div class="row" style="margin-bottom:10px">
     <div id="draftHead" class="mut" style="flex:1;min-width:260px"></div>
-    <button class="btn sec sm" id="draftClear">Reset all draft marks</button>
+    <button class="btn" id="draftSave">💾 Save draft marks</button>
+    <button class="btn sec sm" id="draftUndo">Discard changes</button>
+    <button class="btn sec sm" id="draftClear">Clear all marks</button>
     <label class="btn sec sm" style="display:inline-block" title="Excel or CSV with Reg ID and Team columns">Upload final draft list<input type="file" id="draftUp" accept=".xlsx,.xls,.csv" hidden></label>
     <button class="btn sec sm" id="draftUnUp" hidden>Remove uploaded list</button>
   </div>
@@ -280,6 +282,9 @@ function draftIssue(team, ids){
 }
 function initDraft(){ const m={}; TEAMS.forEach(t=>m[t]=[]); S.draft=m; S.draftVer=2; persist(); }
 function drafted(p){ return !!draftTeamOf(p.id); }
+function editMap(){ if(!S.draftEdit) S.draftEdit=JSON.parse(JSON.stringify(draftMap())); return S.draftEdit; }
+const norm=m=>JSON.stringify(TEAMS.map(t=>(m[t]||[]).slice().sort()));
+function draftDirty(){ return !!S.draftEdit && norm(S.draftEdit)!==norm(draftMap()); }
 
 /* ================= CALLING ORDER ================= */
 let ORDER=[], ORDER_IDX={};
@@ -470,15 +475,17 @@ function renderPlanBar(){
 
 /* ================= RENDER: DRAFT ================= */
 function renderDraft(){
-  const conf=confirmed(), dm=draftMap();
+  const conf=confirmed(), dm=conf? draftMap() : editMap(), dirty=!conf&&draftDirty();
   const any=P().filter(p=>inPool(p)&&!isOwner(p)&&!prefOf(p)).length;
   const nElig=P().filter(p=>inPool(p)&&!isOwner(p)&&prefOf(p)).length, nMark=Object.values(dm).reduce((a,l)=>a+l.length,0);
   const dl=Date.parse('2026-11-28T18:30:00+05:30')-Date.now(), dlTxt= dl>0? `${Math.floor(dl/864e5)}d ${Math.floor(dl%864e5/36e5)}h left` : "closed — upload the final draft list";
   const stale=STALE()? `<div class="v v-stop" style="margin-bottom:8px;font-size:14px">⚠ Player data is from ${new Date(S.syncedAt).toLocaleDateString('en-IN')} — before the final pool. <a href="#" id="staleGo" style="color:var(--gold2)">Log in to refresh</a> so every team's preferred players appear.</div>`:"";
   $('draftHead').innerHTML= stale + (conf? `<b class="ok">Final draft list loaded${S.draftUpload&&S.draftUpload.length?" (uploaded)":" (from the sheet)"}</b> — ${nMark} drafted players. Marks are locked; the pool and the practice auction use this list.` :
-    `<b>Probable draft marks</b> · ${nMark} marked · saved automatically · draft window closes <b>28 Nov, 6:30 PM</b> (${dlTxt}).<br>Each team lists the players in the final pool of 248 who chose it as preferred team: <b>${nElig}</b> players besides the owners. Players who chose "Any Team" go straight to the auction. Up to 2 per team besides the owner.`);
+    `<b>Probable draft marks</b> · ${nMark} marked · ${dirty?'<b class="warn">not saved yet — press Save to update the auction pool</b>':`saved${S.draftSavedAt?" "+new Date(S.draftSavedAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):""} · <b>${ORDER.length}</b> players in the auction pool <a href="#" data-go="pool" style="color:var(--gold2)">mark them →</a>`} · draft window closes <b>28 Nov, 6:30 PM</b> (${dlTxt}).<br>Each team lists the players in the final pool of 248 who chose it as preferred team: <b>${nElig}</b> players besides the owners. Players who chose "Any Team" go straight to the auction. Up to 2 per team besides the owner.`);
   if($('staleGo')) $('staleGo').onclick=e=>{ e.preventDefault(); IN_CLAUDE?syncSheet():showLogin("Log in to load the final pool and preferred teams."); };
-  $('draftClear').hidden=conf; $('draftUnUp').hidden=!(S.draftUpload&&S.draftUpload.length);
+  $('draftClear').hidden=conf; $('draftSave').hidden=conf; $('draftUndo').hidden=conf||!dirty; $('draftUnUp').hidden=!(S.draftUpload&&S.draftUpload.length);
+  $('draftSave').textContent= dirty? "💾 Save draft marks (unsaved changes)" : "✔ Saved";
+  $('draftSave').style.background= dirty? "var(--gold)" : "var(--panel2)"; $('draftSave').style.color= dirty? "#1a1205" : "var(--green)";
   const order=[MY,...TEAMS.filter(t=>t!==MY)];
   $('draftGrid').innerHTML=order.map(team=>{
     const o=ownerOfTeam(team), ids=dm[team]||[];
@@ -486,7 +493,7 @@ function renderDraft(){
     const extraConf=conf? ids.filter(id=>!pref.some(p=>p.id===id)).map(id=>S.players[id]) : [];
     const set=[o,...ids.map(i=>S.players[i])].filter(Boolean);
     const pts=set.reduce((a,p)=>a+draftPoint(p),0), sr=set.reduce((a,p)=>a+(p.rating||0),0);
-    const t=tstate(team), iss=draftIssue(team,ids);
+    const t={g:{C:set.filter(p=>GROUP(p.cat)==="C").length,D:set.filter(p=>GROUP(p.cat)==="D").length}}, iss=draftIssue(team,ids);
     const pl=p=>{ const on=ids.includes(p.id), m=mk(p.id); return `<div class="pl"><label><input type="checkbox" data-dr="${team}|${p.id}" ${on?"checked":""} ${conf?"disabled":""}> <span><b>${esc(p.name)}</b> <span class="mut sm">${esc(p.district||"")}</span></span></label>${tag(p.cat)} <b class="sm" style="width:24px;text-align:right">${p.rating}</b> <span class="mut sm" style="width:58px;text-align:right" title="Draft Point">${fmt(draftPoint(p))}</span>${m.st==="T"?" ★":""}</div>`; };
     return `<div class="card" ${team===MY?'style="border-color:var(--gold)"':""}><h3>${esc(team)}${team===MY?" 🦏":""}</h3>
       <div class="own">${o?`Owner: <b>${esc(o.name)}</b> ${tag(o.cat)} SR <b>${o.rating}</b> · Draft Point ${fmt(draftPoint(o))}`:'<span class="mut">Owner not found in data</span>'}</div>
@@ -497,12 +504,19 @@ function renderDraft(){
 }
 document.addEventListener('change',e=>{
   const d=e.target.dataset.dr; if(!d) return;
-  const [team,id]=d.split("|"), dm=draftMap(), ids=dm[team]||(dm[team]=[]);
+  const [team,id]=d.split("|"), dm=editMap(), ids=dm[team]||(dm[team]=[]);
   if(e.target.checked){ const pp=S.players[id]; if(prefOf(pp)!==team){ e.target.checked=false; toast(`${pp.name} is not on ${short(team)}'s preference list`); return; } const iss=draftIssue(team,[...ids,id]); if(iss){ e.target.checked=false; toast(`${short(team)}: ${iss}`); return; } ids.push(id); }
   else dm[team]=ids.filter(x=>x!==id);
-  persist(); refresh(); toast(e.target.checked?`${S.players[id].name} marked as ${short(team)} draft — out of the pool`:`${S.players[id].name} back in the pool`);
+  persist(); renderDraft(); toast(e.target.checked?`${S.players[id].name} marked for ${short(team)} — press Save to update the pool`:`${S.players[id].name} unmarked — press Save to update the pool`);
 });
-$('draftClear').onclick=()=>{ if(!confirm("Reset every probable draft mark? Owners stay with their teams; all marked players go back to the pool.")) return; initDraft(); refresh(); toast("All draft marks reset"); };
+$('draftClear').onclick=()=>{ if(!confirm("Clear every probable draft mark? Owners stay with their teams. Press Save afterwards to send everyone back to the pool.")) return; S.draftEdit={}; TEAMS.forEach(t=>S.draftEdit[t]=[]); persist(); renderDraft(); };
+$('draftSave').onclick=()=>{ const ed=editMap(), bad=TEAMS.map(t=>{ const i=draftIssue(t,ed[t]||[]); return i?`${short(t)}: ${i}`:""; }).filter(Boolean);
+  if(bad.length){ toast("Fix first — "+bad[0]); return; }
+  S.draft=JSON.parse(JSON.stringify(ed)); S.draftVer=2; S.draftEdit=null; S.draftSavedAt=Date.now();
+  // marks on players who are now drafted stay, but they leave the pool list
+  persist(); refresh(); const n=ORDER.length, d=Object.values(S.draft).reduce((a,l)=>a+l.length,0);
+  toast(`Saved — ${d} drafted · ${n} players in the auction pool for your marking`); };
+$('draftUndo').onclick=()=>{ if(!confirm("Discard the changes since your last save?")) return; S.draftEdit=null; persist(); renderDraft(); };
 $('draftUnUp').onclick=()=>{ if(!confirm("Remove the uploaded final draft list and go back to your marks?")) return; S.draftUpload=null; persist(); refresh(); };
 function loadScript(src){ return new Promise((res,rej)=>{ const x=document.createElement('script'); x.src=src; x.onload=res; x.onerror=rej; document.head.appendChild(x); }); }
 $('draftUp').onchange=async e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return;
@@ -552,7 +566,7 @@ function renderPool(){
   const rows=[]; let last=null, shown=0;
   ORDER.forEach(o=>{ if(!poolFilter(o)) return; if(o.label!==last){ last=o.label; rows.push(`<tr class="grp"><td colspan="10">${esc(o.label)} · ${o.stepN} players · opens at ${fmt(BASE_PT[o.p.cat])}${o.step==="RSC"?" (order drawn on the day)":" · called highest Skill Rating first"}</td></tr>`); } rows.push(poolRow(o)); shown++; });
   $('poolT').innerHTML=`<tr><th class="n">Call</th><th>Player</th><th>Cat</th><th class="n">SR</th><th class="n">Base</th><th>Role</th><th>Status</th><th>My max bid</th><th>Teams can bid</th><th>Remarks</th></tr>`+(rows.join("")||`<tr><td colspan="10" class="mut">No players match.</td></tr>`);
-  $('pcount').textContent=`${shown} of ${ORDER.length} players in the pool · ${targets().length} targets`;
+  $('pcount').innerHTML=`${draftDirty()?'<a href="#" data-go="draft" class="warn">Unsaved draft changes — save them to update this list</a> · ':""}${shown} of ${ORDER.length} players in the pool · ${targets().length} targets`;
 }
 // update a row in place (keeps the cursor in the inputs) and show its insights
 function rerenderRow(id){ const o=ORDER[ORDER_IDX[id]], tr=$('r-'+id); if(!o||!tr) return;
@@ -958,7 +972,8 @@ function setupData(){
 }
 
 /* ================= NAV AND REFRESH ================= */
-function show(v){ const was=MODE; MODE= v==='sim' && SIM.started && !SIM.done? 'sim' : (v==='sim' && SIM.started ? 'sim' : 'real'); if(MODE!==was){ TSC={}; RES={pt:minBase(),sr:avgRSC()}; renderPlanBar(); }
+function show(v){ if(v!=='draft' && document.querySelector('#v-draft.on') && draftDirty()) toast('Draft marks not saved yet — the pool still uses your last saved marks');
+  const was=MODE; MODE= v==='sim' && SIM.started && !SIM.done? 'sim' : (v==='sim' && SIM.started ? 'sim' : 'real'); if(MODE!==was){ TSC={}; RES={pt:minBase(),sr:avgRSC()}; renderPlanBar(); }
   if(v!=='sim' && SIM.started && !SIM.done && !SIM.paused){ SIM.paused=true; }
   document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v)); document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v)); renderView(v); }
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));

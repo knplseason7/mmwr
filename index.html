@@ -474,8 +474,10 @@ function renderDraft(){
   const any=P().filter(p=>inPool(p)&&!isOwner(p)&&!prefOf(p)).length;
   const nElig=P().filter(p=>inPool(p)&&!isOwner(p)&&prefOf(p)).length, nMark=Object.values(dm).reduce((a,l)=>a+l.length,0);
   const dl=Date.parse('2026-11-28T18:30:00+05:30')-Date.now(), dlTxt= dl>0? `${Math.floor(dl/864e5)}d ${Math.floor(dl%864e5/36e5)}h left` : "closed — upload the final draft list";
-  $('draftHead').innerHTML= conf? `<b class="ok">Final draft list loaded${S.draftUpload&&S.draftUpload.length?" (uploaded)":" (from the sheet)"}</b> — ${nMark} drafted players. Marks are locked; the pool and the practice auction use this list.` :
-    `<b>Probable draft marks</b> · ${nMark} marked · saved automatically · draft window closes <b>28 Nov, 6:30 PM</b> (${dlTxt}).<br>Each team lists the players in the final pool of 248 who chose it as preferred team: <b>${nElig}</b> players besides the owners. Players who chose "Any Team" go straight to the auction. Up to 2 per team besides the owner.`;
+  const stale=STALE()? `<div class="v v-stop" style="margin-bottom:8px;font-size:14px">⚠ Player data is from ${new Date(S.syncedAt).toLocaleDateString('en-IN')} — before the final pool. <a href="#" id="staleGo" style="color:var(--gold2)">Log in to refresh</a> so every team's preferred players appear.</div>`:"";
+  $('draftHead').innerHTML= stale + (conf? `<b class="ok">Final draft list loaded${S.draftUpload&&S.draftUpload.length?" (uploaded)":" (from the sheet)"}</b> — ${nMark} drafted players. Marks are locked; the pool and the practice auction use this list.` :
+    `<b>Probable draft marks</b> · ${nMark} marked · saved automatically · draft window closes <b>28 Nov, 6:30 PM</b> (${dlTxt}).<br>Each team lists the players in the final pool of 248 who chose it as preferred team: <b>${nElig}</b> players besides the owners. Players who chose "Any Team" go straight to the auction. Up to 2 per team besides the owner.`);
+  if($('staleGo')) $('staleGo').onclick=e=>{ e.preventDefault(); IN_CLAUDE?syncSheet():showLogin("Log in to load the final pool and preferred teams."); };
   $('draftClear').hidden=conf; $('draftUnUp').hidden=!(S.draftUpload&&S.draftUpload.length);
   const order=[MY,...TEAMS.filter(t=>t!==MY)];
   $('draftGrid').innerHTML=order.map(team=>{
@@ -966,7 +968,10 @@ function refresh(){ TSC={}; buildOrder(); RES={pt:minBase(),sr:avgRSC()}; fillLi
   $('dataInfo').innerHTML= P().length? `${ORDER.length} in the pool after drafts · ${Object.keys(S.sales).length} sold` : ""; }
 const renderAll=refresh;
 setupData(); setupLiveLink();
+// data from before the pool was frozen (22 Nov) is out of date: preferences and the pool were still filling up
+const STALE=()=>P().length && (S.syncedAt < Date.parse('2026-11-23T00:00:00+05:30') || !S.poolIds || S.poolIds.length<240);
 if(!IN_CLAUDE && !isLoggedIn()){ document.body.classList.add('locked'); showLogin(); }
+else if(!IN_CLAUDE && STALE()) showLogin(`Your player data is from ${new Date(S.syncedAt).toLocaleDateString('en-IN')}, before the final pool. Log in once to load the final 248 and every player's preferred team. Your marks are kept.`);
 if(IN_CLAUDE && !P().length) syncSheet();
 
 if(location.hash==='#live') show('live');

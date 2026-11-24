@@ -122,8 +122,9 @@ body.locked main,body.locked nav,body.locked #planBar{display:none!important}
 <section class="view on" id="v-draft">
   <div class="row" style="margin-bottom:10px">
     <div id="draftHead" class="mut" style="flex:1;min-width:260px"></div>
-    <button class="btn sec sm" id="draftReset">Reset to built-in probable list</button>
-    <button class="btn sec sm" id="draftClear">Clear all marks</button>
+    <button class="btn sec sm" id="draftClear">Reset all draft marks</button>
+    <label class="btn sec sm" style="display:inline-block" title="Excel or CSV with Reg ID and Team columns">Upload final draft list<input type="file" id="draftUp" accept=".xlsx,.xls,.csv" hidden></label>
+    <button class="btn sec sm" id="draftUnUp" hidden>Remove uploaded list</button>
   </div>
   <div class="grid g3 draft" id="draftGrid"></div>
   <div class="note">Tick the players you expect each team to draft. Only players who chose that team in Phase 2 can be drafted. Each team drafts up to 3 including the owner: at most 1 Conqueror and 2 Dominators (at most 1 Apex), and Conqueror + Dominator + Dominator is not allowed. Draft Point = Base Point + Base Point × Skill Rating ÷ 100, rounded up. Players who chose "Any Team" go straight to the auction.</div>
@@ -255,15 +256,19 @@ function setMark(id,k,v){ const m=S.marks[id]||(S.marks[id]={}); if(v===""||v==n
 function inPool(p){ return (!S.poolIds || S.poolIds.includes(p.id)) && !/reject/i.test(p.regStatus||""); }
 function ownerOfTeam(team){ return P().find(p=>p.ownerOf && normTeam(p.ownerOf)===normTeam(team)); }
 function isOwner(p){ return !!(p.ownerOf && teamOf(p.ownerOf)); }
-function confirmed(){ return !!(S.draftFinal && S.draftFinal.length); }
+function finalList(){ return (S.draftUpload&&S.draftUpload.length)? S.draftUpload : (S.draftFinal&&S.draftFinal.length? S.draftFinal : null); }
+function confirmed(){ return !!finalList(); }
 // draft map: team -> [ids] (owner excluded)
 function draftMap(){
-  if(confirmed()){ const m={}; S.draftFinal.forEach(([id,t,team])=>{ if(String(t).toUpperCase()==="OWNER") return; const tm=teamOf(t); if(tm && S.players[id]) (m[tm]||(m[tm]=[])).push(id); }); return m; }
-  if(!S.draft){ if(!P().length) return {}; initDraft(); }
+  if(confirmed()){ const m={}; finalList().forEach(([id,t,team])=>{ if(String(t).toUpperCase()==="OWNER") return; const tm=teamOf(t); if(tm && S.players[id]) (m[tm]||(m[tm]=[])).push(id); }); return m; }
+  if(!S.draft || S.draftVer!==2){ if(!P().length) return {}; initDraft(); }
   return S.draft;
 }
 function draftTeamOf(id){ const m=draftMap(); for(const t in m) if(m[t].includes(id)) return t; return ""; }
-function prefOf(p){ return teamOf(p.prefTeam); }
+// Draft eligibility = the Team-wise Player Preference list (21-11-2026): players who chose that team in Phase 2,
+// Reg IDs up to KNPL7-0252. Waiting-list registrants after that are not on the list and go straight to the auction.
+const DRAFT_LIST_MAX=252;
+function prefOf(p){ return +String(p.id).slice(-4)<=DRAFT_LIST_MAX ? teamOf(p.prefTeam) : ""; }
 // Draft rule (5.2): up to 3 incl. owner; C<=1, D<=2, Apex<=1, and C+D<=2 (no Conqueror–Dominator–Dominator)
 function draftIssue(team, ids){
   const o=ownerOfTeam(team), set=[o,...ids.map(i=>S.players[i])].filter(Boolean);
@@ -275,14 +280,7 @@ function draftIssue(team, ids){
   if(C+D>2) return "Conqueror + Dominator + Dominator is not allowed";
   return "";
 }
-function initDraft(){
-  const src=(S.draftProbable&&S.draftProbable.length)?S.draftProbable:(SEED.draft||[]);
-  const m={}; TEAMS.forEach(t=>m[t]=[]);
-  src.forEach(([id,t])=>{ if(String(t).toUpperCase()==="OWNER") return; const team=teamOf(t), p=S.players[id]; if(!team||!p||isOwner(p)) return;
-    if(prefOf(p) && prefOf(p)!==team) return;
-    if(!draftIssue(team,[...m[team],id])) m[team].push(id); });
-  S.draft=m; persist();
-}
+function initDraft(){ const m={}; TEAMS.forEach(t=>m[t]=[]); S.draft=m; S.draftVer=2; persist(); }
 function drafted(p){ return !!draftTeamOf(p.id); }
 
 /* ================= CALLING ORDER ================= */
@@ -476,9 +474,11 @@ function renderPlanBar(){
 function renderDraft(){
   const conf=confirmed(), dm=draftMap();
   const any=P().filter(p=>inPool(p)&&!isOwner(p)&&!prefOf(p)).length;
-  $('draftHead').innerHTML= conf? `<b class="ok">Confirmed drafts loaded from the sheet</b> — marks are locked. The pool on the Players tab uses these.` :
-    `Mark each team's probable draft (window closes <b>28 Nov, 6:30 PM</b>). Your marks decide who is left in the pool. ${any} players chose "Any Team" and go straight to the auction.`;
-  $('draftReset').hidden=$('draftClear').hidden=conf;
+  const nElig=P().filter(p=>inPool(p)&&!isOwner(p)&&prefOf(p)).length, nMark=Object.values(dm).reduce((a,l)=>a+l.length,0);
+  const dl=Date.parse('2026-11-28T18:30:00+05:30')-Date.now(), dlTxt= dl>0? `${Math.floor(dl/864e5)}d ${Math.floor(dl%864e5/36e5)}h left` : "closed — upload the final draft list";
+  $('draftHead').innerHTML= conf? `<b class="ok">Final draft list loaded${S.draftUpload&&S.draftUpload.length?" (uploaded)":" (from the sheet)"}</b> — ${nMark} drafted players. Marks are locked; the pool and the practice auction use this list.` :
+    `<b>Probable draft marks</b> · ${nMark} marked · saved automatically · draft window closes <b>28 Nov, 6:30 PM</b> (${dlTxt}).<br>Only players on the Team-wise Player Preference list (21 Nov) can be marked: <b>${nElig}</b> players who chose a team. Everyone else — "Any Team" and the waiting-list players who joined after 21 Nov — goes straight to the auction. Up to 2 per team besides the owner.`;
+  $('draftClear').hidden=conf; $('draftUnUp').hidden=!(S.draftUpload&&S.draftUpload.length);
   const order=[MY,...TEAMS.filter(t=>t!==MY)];
   $('draftGrid').innerHTML=order.map(team=>{
     const o=ownerOfTeam(team), ids=dm[team]||[];
@@ -492,18 +492,32 @@ function renderDraft(){
       <div class="own">${o?`Owner: <b>${esc(o.name)}</b> ${tag(o.cat)} SR <b>${o.rating}</b> · Draft Point ${fmt(draftPoint(o))}`:'<span class="mut">Owner not found in data</span>'}</div>
       ${pref.length?pref.map(pl).join(""):'<div class="mut sm">No player chose this team.</div>'}
       ${extraConf.map(p=>`<div class="pl"><span>✔ <b>${esc(p.name)}</b> <span class="mut sm">(confirmed)</span></span>${tag(p.cat)} <b class="sm">${p.rating}</b></div>`).join("")}
-      <div class="sum">${set.length}/3 drafted incl. owner · Draft Points <b>${fmt(pts)}</b> · purse left <b>${fmt(PURSE-pts)}</b> · SR <b>${sr}</b> · C ${t.g.C} · D ${t.g.D} ${iss?`<div class="bad">${esc(iss)}</div>`:""}</div></div>`;
+      <div class="sum"><span class="mut">${pref.length} eligible</span> · ${set.length}/3 drafted incl. owner · Draft Points <b>${fmt(pts)}</b> · purse left <b>${fmt(PURSE-pts)}</b> · SR <b>${sr}</b> · C ${t.g.C} · D ${t.g.D} ${iss?`<div class="bad">${esc(iss)}</div>`:""}</div></div>`;
   }).join("");
 }
 document.addEventListener('change',e=>{
   const d=e.target.dataset.dr; if(!d) return;
   const [team,id]=d.split("|"), dm=draftMap(), ids=dm[team]||(dm[team]=[]);
-  if(e.target.checked){ const iss=draftIssue(team,[...ids,id]); if(iss){ e.target.checked=false; toast(`${short(team)}: ${iss}`); return; } ids.push(id); }
+  if(e.target.checked){ const pp=S.players[id]; if(prefOf(pp)!==team){ e.target.checked=false; toast(`${pp.name} is not on ${short(team)}'s preference list`); return; } const iss=draftIssue(team,[...ids,id]); if(iss){ e.target.checked=false; toast(`${short(team)}: ${iss}`); return; } ids.push(id); }
   else dm[team]=ids.filter(x=>x!==id);
   persist(); refresh(); toast(e.target.checked?`${S.players[id].name} marked as ${short(team)} draft — out of the pool`:`${S.players[id].name} back in the pool`);
 });
-$('draftReset').onclick=()=>{ if(!confirm("Replace all draft marks with the built-in probable list?")) return; initDraft(); refresh(); toast("Draft marks reset"); };
-$('draftClear').onclick=()=>{ if(!confirm("Clear every draft mark? (Owners stay.)")) return; S.draft={}; TEAMS.forEach(t=>S.draft[t]=[]); persist(); refresh(); };
+$('draftClear').onclick=()=>{ if(!confirm("Reset every probable draft mark? Owners stay with their teams; all marked players go back to the pool.")) return; initDraft(); refresh(); toast("All draft marks reset"); };
+$('draftUnUp').onclick=()=>{ if(!confirm("Remove the uploaded final draft list and go back to your marks?")) return; S.draftUpload=null; persist(); refresh(); };
+function loadScript(src){ return new Promise((res,rej)=>{ const x=document.createElement('script'); x.src=src; x.onload=res; x.onerror=rej; document.head.appendChild(x); }); }
+$('draftUp').onchange=async e=>{ const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  try{ let rows;
+    if(/\.csv$/i.test(f.name)) rows=(await f.text()).split(/\r?\n/).map(l=>l.split(","));
+    else { if(!window.XLSX) await loadScript("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"); const wb=XLSX.read(await f.arrayBuffer()); rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1}); }
+    const out=[], bad=[]; let lastTeam="";
+    rows.forEach(r=>{ const cells=(r||[]).map(x=>String(x??"").trim()); const id=(cells.join(" ").match(/KNPL7-?\s*(\d{4})/i)||[])[1]; const tm=cells.map(teamOf).find(Boolean)||"";
+      if(tm) lastTeam=tm; if(!id) return; const pid="KNPL7-"+id, p=S.players[pid], team=tm||lastTeam;
+      if(!p||!team){ bad.push(pid); return; } if(isOwner(p)) return; out.push([pid,team]); });
+    if(!out.length){ toast("No Reg ID + team pairs found in that file"); return; }
+    const m={}; out.forEach(([id,t])=>(m[t]=m[t]||[]).push(id)); const issues=Object.entries(m).map(([t,ids])=>{ const i=draftIssue(t,ids); return i?`${short(t)}: ${i}`:""; }).filter(Boolean);
+    if(!confirm(`Load ${out.length} drafted players for ${Object.keys(m).length} teams as the final draft list?${issues.length?"\n\nCheck: "+issues.join("; "):""}${bad.length?"\n\nNot recognised: "+bad.join(", "):""}`)) return;
+    S.draftUpload=out; persist(); refresh(); toast("Final draft list loaded");
+  }catch(err){ toast("Couldn't read that file"); } };
 
 /* ================= RENDER: POOL ================= */
 let OPEN=null;
@@ -892,7 +906,7 @@ function applyData(j){
     const st=r.stats? {m:num(r.stats.m),runs:num(r.stats.runs),avg:num(r.stats.avg),hs:num(r.stats.hs),s6:num(r.stats.s6),wk:num(r.stats.wk),ct:num(r.stats.ct),mvp:num(r.stats.mvp),type:r.stats.type||""}:null;
     S.players[id]={id,name:String(r.name||"").trim(),district:String(r.district||"").trim(),cat:catCode(r.cat),rating:Math.round(num(r.rating))||0,prefTeam:String(r.prefTeam||"").trim(),ownerOf:String(r.ownerOf||"").trim(),stats:st,leagues:r.leagues||{},regStatus:r.regStatus||""}; });
   if(seen.size) Object.keys(S.players).forEach(id=>{ if(!seen.has(id)) delete S.players[id]; });
-  S.syncedAt=Date.now(); if(!S.draft || !Object.values(S.draft).some(l=>l.length)) initDraft(); persist(); refresh(); return seen.size;
+  S.syncedAt=Date.now(); if(!S.draft || S.draftVer!==2) initDraft(); persist(); refresh(); return seen.size;
 }
 function apiUrl(){ let u=DATA_URL; try{ u=u||JSON.parse(localStorage.getItem('mmwr-api')||"{}").url||""; }catch(e){} return u; }
 function isLoggedIn(){ try{ return localStorage.getItem('mmwr-session')==="1"; }catch(e){ return false; } }

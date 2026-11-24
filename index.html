@@ -401,20 +401,44 @@ const isLeft=p=>/\bLHB\b|left[- ]hand bat/i.test((p.stats&&p.stats.type)||"");
 const isNew=p=>!Object.keys(p.leagues||{}).some(k=>/^KNPL/.test(k));
 
 /* ================= ALTERNATIVES ================= */
+// Player profile tags from four sources: my role mark, my remarks (read for keywords), CricHeroes numbers and batting/bowling style
+const TAGW={opener:3,keeper:3,hitter:3,anchor:3,spin:3,pace:3,allround:2,bat:2,bowl:2,lhb:1,fielder:1};
+const TAGN={opener:"opener",keeper:"keeper",hitter:"hitter",anchor:"anchor",spin:"spin",pace:"pace",allround:"all-rounder",bat:"batter",bowl:"bowler",lhb:"left-hander",fielder:"fielder"};
+function ptags(p){
+  const t=new Set(), m=mk(p.id), s=p.stats||{}, st=String(s.type||"").toLowerCase(), add=(...x)=>x.forEach(y=>t.add(y));
+  // ignore negated phrases such as "rarely bats", "doesn't bowl", "not a keeper"
+  const note=String(m.note||"").toLowerCase().replace(/\b(rarely|seldom|hardly|never|not|no|doesn'?t|does not|don'?t|can'?t|cannot|won'?t)\s+(?:\w+\s+){0,2}?(bat|bowl|keep|field|spin|open|hit)\w*/g," ");
+  const R={OPEN:["opener","bat"],ANCH:["anchor","bat"],HIT:["hitter","bat"],BAR:["bat","allround"],BWAR:["bowl","allround"],PACE:["pace","bowl"],SPIN:["spin","bowl"],WK:["keeper","bat"],FLD:["fielder"]};
+  if(m.role) add(...R[m.role]);
+  if(note){ if(/open/.test(note)) add("opener","bat"); if(/keep|\bwk\b|wicket ?keep/.test(note)) add("keeper"); if(/hit|six|power|finish|slog/.test(note)) add("hitter","bat");
+    if(/anchor|steady|solid/.test(note)) add("anchor","bat"); if(/spin|off ?break|leg ?break|leg ?spin|orthodox/.test(note)) add("spin","bowl"); if(/pace|fast|seam|swing|medium/.test(note)) add("pace","bowl");
+    if(/bowl/.test(note)) add("bowl"); if(/bat/.test(note)) add("bat"); if(/all ?-?round/.test(note)) add("allround","bat","bowl"); if(/field|catch/.test(note)) add("fielder"); if(/left/.test(note)) add("lhb"); }
+  if(s.m>=5){ const rpm=s.runs/s.m, wpm=s.wk/s.m; if(rpm>=12) add("bat"); if(wpm>=0.6) add("bowl"); if(rpm>=10&&wpm>=0.5) add("allround"); if(s.s6/s.m>=0.8) add("hitter"); if(s.ct/s.m>=0.5) add("fielder"); }
+  if(/\blhb\b|left[- ]hand(ed)? bat/.test(st)) add("lhb");
+  if(t.has("bowl") && !t.has("spin") && !t.has("pace")){ if(/off ?break|leg ?break|orthodox|chinaman|googly|spin/.test(st)) add("spin"); else if(/fast|medium|seam/.test(st)) add("pace"); }
+  return t;
+}
+// Next options: players still to come, ranked by how closely they match him (role, remarks, numbers, style, rating)
 function alternatives(p,limit){
-  const i=ORDER_IDX[p.id]??-1, role=mk(p.id).role, rg=role?ROLEG[role]:null;
-  const cand=ORDER.slice(i+1).map(o=>o.p).concat(ORDER.slice(0,Math.max(0,i)).map(o=>o.p).filter(q=>UNS()[q.id]))
-    .filter(q=>q!==p && !sold(q) && mk(q.id).st!=="X");
-  const score=q=>{ const m=mk(q.id); let s=0; if(role && m.role===role) s+=40; else if(rg && m.role && ROLEG[m.role]===rg) s+=30; else if(!role && GROUP(q.cat)===GROUP(p.cat)) s+=20;
-    if(m.st==="T") s+=12; if(m.st==="B") s+=10; s-=Math.abs((q.rating||0)-(p.rating||0))/4; return s; };
-  let list=cand.filter(q=>{ const m=mk(q.id); return role? (m.role && ROLEG[m.role]===rg) : (GROUP(q.cat)===GROUP(p.cat)||Math.abs(q.rating-p.rating)<=8); });
-  list=list.filter(q=>evalTeam(MY,q,stageFor(q),planExtra(q)).ok || evalTeam(MY,q,stageFor(q)).ok);
-  return list.sort((a,b)=>score(b)-score(a)).slice(0,limit||5);
+  const i=ORDER_IDX[p.id]??-1, pt=ptags(p);
+  const cand=ORDER.slice(i+1).map(o=>o.p).concat(ORDER.slice(0,Math.max(0,i)).map(o=>o.p).filter(q=>UNS()[q.id])).filter(q=>q!==p && !sold(q));
+  const out=[];
+  cand.forEach(q=>{
+    if(!(evalTeam(MY,q,stageFor(q)).ok)) return;
+    const qt=ptags(q), shared=[...pt].filter(x=>qt.has(x)); let sc=shared.reduce((a,x)=>a+TAGW[x],0);
+    const sameG=GROUP(q.cat)===GROUP(p.cat), d=Math.abs((q.rating||0)-(p.rating||0));
+    if(!shared.length && !(sameG && d<=8)) return;
+    sc+= sameG?2:0; sc-= d/5; const st=mk(q.id).st; sc+= st==="T"?3: st==="B"?2: st==="X"?-4:0; if(AVAIL[q.id]) sc-=1;
+    const why=shared.sort((a,b)=>TAGW[b]-TAGW[a]).slice(0,3).map(x=>TAGN[x]);
+    out.push({q,sc,why,d});
+  });
+  return out.sort((a,b)=>b.sc-a.sc).slice(0,limit||5);
 }
 function altHTML(p,limit){
-  const l=alternatives(p,limit); const role=mk(p.id).role;
-  if(!l.length) return `<div class="mut sm">${role?`No other ${esc(ROLEN[role].toLowerCase())}s marked after him.`:"Mark his role to see like-for-like options."} Mark roles on more players to get options here.</div>`;
-  return `<table class="sm"><tr><th>Call</th><th>Player</th><th>Cat</th><th class="n">SR</th><th>Role</th><th class="n">My max</th></tr>${l.map(q=>{ const m=mk(q.id); return `<tr><td class="mut">${UNS()[q.id]?"2nd rd":"#"+callNo(q)}</td><td><span class="pname" data-open="${q.id}">${esc(q.name)}</span> ${m.st==="T"?"★":m.st==="B"?'<span class="mut">backup</span>':""}${isLeft(q)?' <span class="mut">LH</span>':""}</td><td>${tag(q.cat)}</td><td class="n">${q.rating}</td><td>${m.role?esc(ROLEN[m.role]):'<span class="mut">–</span>'}</td><td class="n">${m.max?fmt(m.max):'<span class="mut">base '+fmt(openBid(q,stageFor(q)))+'</span>'}</td></tr>`; }).join("")}</table>`;
+  const l=alternatives(p,limit), pt=[...ptags(p)].sort((a,b)=>TAGW[b]-TAGW[a]).map(x=>TAGN[x]);
+  const head=`<div class="mut sm" style="margin-bottom:4px">${pt.length?`He reads as: <b>${pt.slice(0,4).join(" · ")}</b> (from your role, remarks, his numbers and style)`:"Mark his role or add a remark to sharpen the match."}</div>`;
+  if(!l.length) return head+`<div class="mut sm">No similar player still to come that we can bid for.</div>`;
+  return head+`<table class="sm"><tr><th>Call</th><th>Player</th><th>Cat</th><th class="n">SR</th><th>Why similar</th><th class="n">My max</th></tr>${l.map(({q,why})=>{ const m=mk(q.id); return `<tr class="${m.st==="X"?"st-X":""}"><td class="mut">${UNS()[q.id]?"2nd rd":"#"+callNo(q)}</td><td><span class="pname" data-open="${q.id}">${esc(q.name)}</span> ${m.st==="T"?"★":m.st==="B"?'<span class="mut">backup</span>':m.st==="X"?'<span class="mut">not for me</span>':""}${m.note?` <span title="${esc(m.note)}">📝</span>`:""}</td><td>${tag(q.cat)}</td><td class="n">${q.rating}</td><td>${why.length?esc(why.join(", ")):'<span class="mut">same category, similar rating</span>'}</td><td class="n">${m.max?fmt(m.max):'<span class="mut">base '+fmt(openBid(q,stageFor(q)))+'</span>'}</td></tr>`; }).join("")}</table>`;
 }
 
 /* ================= INSIGHTS (one player) ================= */
@@ -650,6 +674,7 @@ function verdict(p,stage,bid,lead){
   else if(!myMax){ cls="v-care"; head=`No max set · next bid ${fmt(next)}`; sub.push(`Rules allow up to ${fmt(me.max)}${bud.others?` · your plan budget ${fmt(bud.pts)}`:""}.`); }
   else { const steps=[]; let v=next; while(v<=myMax && steps.length<60){ steps.push(v); v+=bidStep(v); }
     cls="v-go"; head=`✅ BID ${fmt(next)}`; sub.push(`Room up to your max ${fmt(myMax)} · ${steps.length} more bid${steps.length>1?"s":""} from here.`); }
+  if(!sold(p) && m.st==="X") sub.unshift(`<span class="mut">You marked him "Not for me" — you can still bid if the price suits you.</span>`);
   if(!sold(p) && me.ok && bud.others && next>bud.pts) sub.push(`<span class="warn">⚠ ${fmt(next)} is over your plan budget (${fmt(bud.pts)}) — buying him means lowering or dropping another target.</span>`);
   if(!sold(p) && me.ok && p.rating>me.t.maxSR) sub.push(`<span class="warn">⚠ Needs the one-time +25 bonus — declare it to the auctioneer before bidding.</span>`);
   if(!sold(p) && topR && me.ok){ const tr=topR; if(tr.max<=me.max && (!myMax||tr.max<myMax)) sub.push(`Highest rival ceiling: <b>${fmt(tr.max)}</b> (${esc(short(tr.team))}) — you never need more than ${fmt(tr.max+bidStep(tr.max))}.`);

@@ -265,10 +265,8 @@ function draftMap(){
   return S.draft;
 }
 function draftTeamOf(id){ const m=draftMap(); for(const t in m) if(m[t].includes(id)) return t; return ""; }
-// Draft eligibility = the Team-wise Player Preference list (21-11-2026): players who chose that team in Phase 2,
-// Reg IDs up to KNPL7-0252. Waiting-list registrants after that are not on the list and go straight to the auction.
-const DRAFT_LIST_MAX=252;
-function prefOf(p){ return +String(p.id).slice(-4)<=DRAFT_LIST_MAX ? teamOf(p.prefTeam) : ""; }
+// Draft eligibility: every player in the final pool (248) who chose that team as preferred team in Phase 2
+function prefOf(p){ return teamOf(p.prefTeam); }
 // Draft rule (5.2): up to 3 incl. owner; C<=1, D<=2, Apex<=1, and C+D<=2 (no Conqueror–Dominator–Dominator)
 function draftIssue(team, ids){
   const o=ownerOfTeam(team), set=[o,...ids.map(i=>S.players[i])].filter(Boolean);
@@ -477,7 +475,7 @@ function renderDraft(){
   const nElig=P().filter(p=>inPool(p)&&!isOwner(p)&&prefOf(p)).length, nMark=Object.values(dm).reduce((a,l)=>a+l.length,0);
   const dl=Date.parse('2026-11-28T18:30:00+05:30')-Date.now(), dlTxt= dl>0? `${Math.floor(dl/864e5)}d ${Math.floor(dl%864e5/36e5)}h left` : "closed — upload the final draft list";
   $('draftHead').innerHTML= conf? `<b class="ok">Final draft list loaded${S.draftUpload&&S.draftUpload.length?" (uploaded)":" (from the sheet)"}</b> — ${nMark} drafted players. Marks are locked; the pool and the practice auction use this list.` :
-    `<b>Probable draft marks</b> · ${nMark} marked · saved automatically · draft window closes <b>28 Nov, 6:30 PM</b> (${dlTxt}).<br>Only players on the Team-wise Player Preference list (21 Nov) can be marked: <b>${nElig}</b> players who chose a team. Everyone else — "Any Team" and the waiting-list players who joined after 21 Nov — goes straight to the auction. Up to 2 per team besides the owner.`;
+    `<b>Probable draft marks</b> · ${nMark} marked · saved automatically · draft window closes <b>28 Nov, 6:30 PM</b> (${dlTxt}).<br>Each team lists the players in the final pool of 248 who chose it as preferred team: <b>${nElig}</b> players besides the owners. Players who chose "Any Team" go straight to the auction. Up to 2 per team besides the owner.`;
   $('draftClear').hidden=conf; $('draftUnUp').hidden=!(S.draftUpload&&S.draftUpload.length);
   const order=[MY,...TEAMS.filter(t=>t!==MY)];
   $('draftGrid').innerHTML=order.map(team=>{

@@ -79,6 +79,11 @@ input.note{width:100%;min-width:150px}
 .tchip b{font-variant-numeric:tabular-nums}
 .tchip.no{opacity:.55;border-style:dashed}
 .tchip.hi{border-color:rgba(255,107,107,.6)}
+.upc{max-height:300px;overflow:auto;border:1px solid var(--line);border-radius:10px}
+.upc table td{padding:5px 7px}
+.upc tr.u-T td{background:rgba(60,207,142,.16)} .upc tr.u-T td:first-child{box-shadow:inset 4px 0 var(--green)}
+.upc tr.u-B td{background:rgba(255,210,122,.14)} .upc tr.u-B td:first-child{box-shadow:inset 4px 0 #ffd27a}
+.upc tr.u-X td{opacity:.5}
 .draft .pl{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px dashed var(--line)}
 .draft .pl:last-child{border-bottom:0}
 .draft label{display:flex;gap:8px;align-items:center;cursor:pointer;flex:1}
@@ -904,6 +909,7 @@ function renderSim0(){
      <div data-dyn class="mut sm" style="margin-top:8px;min-height:36px">Bids: ${cur.hist.slice(-8).map(h=>`${fmt(h[0])} ${esc(short(h[1]))}`).join(" → ")||"none yet"}</div>
    </div>
    <div class="card"><div data-dyn><h3>Who can still bid ${fmt(v.next)}</h3><div class="tchips">${v.rv.map(r=>`<span class="tchip ${!r.ok||r.max<v.next?"no":""}" title="${esc(r.team)}${r.ok?" · up to "+fmt(r.max):" · "+esc(r.why)}">${esc(short(r.team))} ${r.ok?`<b>${fmt(r.max)}</b>`:'<span class="mut">✕</span>'}</span>`).join("")}</div></div>
+     ${simUpcomingHTML()}
      <h3 style="margin-top:12px">Next options</h3><div data-dyn>${altHTML(p,5)}</div>
      <h3 style="margin-top:12px">My squad (${myT.r.length}/14)</h3><div class="sm">${myT.r.map(x=>`${esc(x.p.name)} ${tag(x.p.cat)} ${x.p.rating} <span class="mut">${x.how==="Bought"?fmt(x.pts):x.how}</span>`).join(" · ")}</div>
      <h3 style="margin-top:12px">Last sales</h3><div class="sm">${SIM.log.slice(0,8).map(([q,t,pr])=>`${esc(q.name)} → ${t?`<b class="${t===MY?"ok":""}">${esc(short(t))}</b> ${fmt(pr)}`:'<span class="mut">unsold</span>'}`).join("<br>")||'<span class="mut">none yet</span>'}</div></div></div>`;
@@ -928,6 +934,16 @@ function renderSim0(){
 function simPauseToggle(){ SIM.paused=!SIM.paused; const cur=SIM.cur; simSave();
   if(!SIM.paused){ if(!SIM.iv) SIM.iv=setInterval(simStep,250); if(!cur||cur.closed){ simNext(); return; } cur.lastAt=Date.now(); simPlanAI(); }
   renderSim(); }
+// players still to come in this round, in calling order, my targets green and backups yellow
+function simUpcomingHTML(){
+  const rest=(SIM.queue||[]).slice(SIM.qi).filter(q=>!SIM.sales[q.id]), nph=simPhases()[SIM.ph+1];
+  const nT=rest.filter(q=>mk(q.id).st==="T").length, nB=rest.filter(q=>mk(q.id).st==="B").length;
+  const rows=rest.map((q,i)=>{ const m=mk(q.id), ok=evalTeam(MY,q,SIM.cur?SIM.cur.stage:1).ok;
+    return `<tr class="u-${m.st||""}"><td class="mut n">${i+1}</td><td><b>${esc(q.name)}</b>${m.st==="T"?" ★":""}${isLeft(q)?' <span class="mut">LH</span>':""}${m.note?` <span title="${esc(m.note)}">📝</span>`:""}</td><td>${tag(q.cat)}</td><td class="n">${q.rating}</td><td class="sm">${m.role?esc(ROLEN[m.role]):'<span class="mut">–</span>'}</td><td class="n">${m.max?fmt(m.max):'<span class="mut">–</span>'}</td><td class="sm">${m.st==="T"?'<b class="ok">Target</b>':m.st==="B"?'<b style="color:#ffd27a">Backup</b>':m.st==="X"?'<span class="mut">not for me</span>':""}${ok?"":' <span class="bad" title="We can\'t bid for him now">✕</span>'}</td></tr>`; }).join("");
+  return `<h3 style="margin-top:12px">Coming up in this round <span class="mut sm" style="font-family:Inter;text-transform:none;font-weight:500">${rest.length} player${rest.length!==1?"s":""} · <span class="ok">★ ${nT} target${nT!==1?"s":""}</span> · <span style="color:#ffd27a">${nB} backup${nB!==1?"s":""}</span></span></h3>
+    ${rest.length?`<div class="upc"><table><tr><th class="n">#</th><th>Player</th><th>Cat</th><th class="n">SR</th><th>Role</th><th class="n">My max</th><th></th></tr>${rows}</table></div>`:'<div class="mut sm">Last player of this round.</div>'}
+    ${nph?`<div class="mut sm" style="margin-top:4px">Then: ${esc(nph[2])}</div>`:""}`;
+}
 function simSetupHTML(){
   const c=simCfg(), dm=draftMap(), nd=Object.values(dm).reduce((a,l)=>a+l.length,0), tg=targets().length, mx=Object.values(S.marks).filter(m=>m.max).length, rl=Object.values(S.marks).filter(m=>m.role).length;
   const ck=(ok,t,v)=>`<div class="line">${ok?"✔":"○"} ${t} <a href="#" data-go="${v}" class="sm" style="color:var(--gold2)">open</a></div>`;

@@ -773,6 +773,45 @@ function simQueue(ph){
   if(k==="R3") return TEAMS.some(t=>tstate(t).slots>0)? shuffle(ORDER.map(o=>o.p).filter(free)) : [];
   return [];
 }
+/* ---- practice auction: saved between visits, and "let the computer finish" ---- */
+const SIMKEY="mmwr2-sim";
+function simSave(){ if(!SIM.started){ try{ localStorage.removeItem(SIMKEY); }catch(e){} return; }
+  const o={sales:SIM.sales,unsold:SIM.unsold,nz:SIM.nz,pers:SIM.pers,ph:SIM.ph,queue:(SIM.queue||[]).map(p=>p.id),qi:SIM.qi,
+    curDone:!!(SIM.cur&&SIM.cur.closed), log:(SIM.log||[]).slice(0,60).map(([p,t,pr])=>[p.id,t,pr]),done:SIM.done,started:SIM.started,poolSet:(SIM.poolSet||[]).map(p=>p.id),savedAt:Date.now()};
+  try{ localStorage.setItem(SIMKEY,JSON.stringify(o)); }catch(e){} }
+function simLoad(){ let o=null; try{ o=JSON.parse(localStorage.getItem(SIMKEY)); }catch(e){} if(!o||!o.started) return;
+  const P_=id=>S.players[id]; const q=o.queue.map(P_).filter(Boolean);
+  SIM={sales:o.sales||{},unsold:o.unsold||{},nz:o.nz||{},pers:o.pers||{},ph:o.ph,queue:q,qi:o.qi,cur:null,timer:null,iv:null,paused:true,
+    log:(o.log||[]).map(([id,t,pr])=>[P_(id),t,pr]).filter(x=>x[0]),done:!!o.done,started:o.started,poolSet:(o.poolSet||[]).map(P_).filter(Boolean),savedAt:o.savedAt,restored:true};
+  if(!SIM.done){ if(!o.curDone && SIM.qi>0) SIM.qi--; simMakeCur(); }
+}
+function simMakeCur(){ // put the next player on the block (without starting the clock)
+  while(SIM.qi>=SIM.queue.length){ SIM.ph++; const ph=simPhases()[SIM.ph]; if(!ph){ SIM.done=true; return null; } SIM.queue=simQueue(ph); SIM.qi=0; }
+  const p=SIM.queue[SIM.qi++], ph=simPhases()[SIM.ph];
+  return SIM.cur={p,stage:ph[1],label:ph[2],no:SIM.qi,of:SIM.queue.length,bid:0,lead:"",lastAt:Date.now(),ai:null,myPass:false,hist:[]};
+}
+// record the result of the player on the block
+function simRecord(cur){ const p=cur.p; cur.closed=true; cur.ai=null;
+  if(cur.lead){ SIM.sales[p.id]={team:cur.lead,price:cur.bid}; SIM.log.unshift([p,cur.lead,cur.bid]); }
+  else { SIM.unsold[p.id]=(SIM.unsold[p.id]||0)+1; SIM.log.unshift([p,"",0]); }
+  TSC={}; RES={pt:minBase(),sr:avgRSC()}; }
+// computer teams settle one player straight away (we don't bid)
+function simInstant(cur){ let g=0; while(g++<400){ const w=aiWant(cur); if(!w) break; cur.bid=simNextBid(cur); cur.lead=w.t; cur.hist.push([cur.bid,w.t]); } simRecord(cur); }
+// let the computer teams finish: "round" = rest of this round, "all" = rest of the auction
+function simSkip(scope){
+  clearTimeout(SIM.timer); const ph0=SIM.ph; let n=0, mine=0;
+  if(SIM.cur && !SIM.cur.closed){ if(SIM.cur.lead===MY){ simRecord(SIM.cur); mine++; } else simInstant(SIM.cur); n++; }
+  while(true){
+    if(SIM.qi>=SIM.queue.length && scope==="round") break;
+    const cur=simMakeCur(); if(!cur) break;
+    if(scope==="round" && SIM.ph!==ph0){ SIM.qi--; SIM.cur=null; break; }
+    simInstant(cur); n++;
+  }
+  SIM.cur=null; simSave(); renderPlanBar();
+  toast(`Computer teams finished ${n} player${n!==1?"s":""}${scope==="all"?" — auction complete":" — this round is done"}`);
+  if(scope==="all"||SIM.done){ SIM.done=true; clearInterval(SIM.iv); SIM.iv=null; renderSim(); return; }
+  SIM.paused=false; if(!SIM.iv) SIM.iv=setInterval(simStep,250); simNext();
+}
 const WAIT=15000;
 function simStart(){
   clearTimeout(SIM.timer); clearInterval(SIM.iv); simCfg();
@@ -780,13 +819,13 @@ function simStart(){
   TEAMS.forEach(t=>SIM.pers[t]=rnd(0.88,1.15));
   MODE='sim'; TSC={}; RES={pt:minBase(),sr:avgRSC()}; SIM.iv=setInterval(simStep,250); simNext();
 }
-function simReset(){ clearTimeout(SIM.timer); clearInterval(SIM.iv); SIM={sales:{},unsold:{}}; MODE='real'; TSC={}; RES={pt:minBase(),sr:avgRSC()}; renderPlanBar(); renderSim(); toast("Practice auction reset — every practice buy is back in the pool; owners and draft marks stay"); }
+function simReset(){ clearTimeout(SIM.timer); clearInterval(SIM.iv); SIM={sales:{},unsold:{}}; try{ localStorage.removeItem(SIMKEY); }catch(e){} MODE='real'; TSC={}; RES={pt:minBase(),sr:avgRSC()}; renderPlanBar(); renderSim(); toast("Practice auction reset — every practice buy is back in the pool; owners and draft marks stay"); }
 function simNext(){
   SIM.cur=null;
-  while(SIM.qi>=SIM.queue.length){ SIM.ph++; const ph=simPhases()[SIM.ph]; if(!ph){ SIM.done=true; clearInterval(SIM.iv); renderSim(); return; } SIM.queue=simQueue(ph); SIM.qi=0; }
+  while(SIM.qi>=SIM.queue.length){ SIM.ph++; const ph=simPhases()[SIM.ph]; if(!ph){ SIM.done=true; clearInterval(SIM.iv); SIM.iv=null; simSave(); renderSim(); return; } SIM.queue=simQueue(ph); SIM.qi=0; }
   const p=SIM.queue[SIM.qi++], ph=simPhases()[SIM.ph];
   SIM.cur={p,stage:ph[1],label:ph[2],no:SIM.qi,of:SIM.queue.length,bid:0,lead:"",lastAt:Date.now(),ai:null,myPass:false,hist:[]};
-  renderSim(); simPlanAI(true);
+  simSave(); renderSim(); simPlanAI(true);
 }
 const simMarked=p=>{ const m=mk(p.id); return m.st==="T"||m.st==="B"||m.max>0; };
 const simNextBid=cur=>cur.bid? cur.bid+bidStep(cur.bid) : openBid(cur.p,cur.stage);
@@ -816,10 +855,7 @@ function simStep(clockOnly){
 }
 function simPlace(team){ const cur=SIM.cur, next=simNextBid(cur); cur.bid=next; cur.lead=team; cur.lastAt=Date.now(); cur.hist.push([next,team]); if(team===MY) cur.myPass=false; simPlanAI(); renderSim(); }
 function simClose(){
-  const cur=SIM.cur, p=cur.p; cur.closed=true; cur.ai=null;
-  if(cur.lead){ SIM.sales[p.id]={team:cur.lead,price:cur.bid}; SIM.log.unshift([p,cur.lead,cur.bid]); }
-  else { SIM.unsold[p.id]=(SIM.unsold[p.id]||0)+1; SIM.log.unshift([p,"",0]); }
-  TSC={}; RES={pt:minBase(),sr:avgRSC()};
+  const cur=SIM.cur, p=cur.p; simRecord(cur); simSave();
   if(cur.lead && cur.lead!==MY && mk(p.id).st==="T") toast(`★ Your target ${p.name} went to ${short(cur.lead)} for ${fmt(cur.bid)}`);
   if(cur.lead===MY) toast(`🦏 ${p.name} is yours for ${fmt(cur.bid)}`);
   renderSim(); renderPlanBar(); clearTimeout(SIM.timer); SIM.timer=setTimeout(()=>{ if(!SIM.paused) simNext(); }, ({fast:900,normal:1800,slow:2800})[simCfg().speed]||1800);
@@ -837,18 +873,22 @@ function renderSim0(){
   if(MODE!=='sim' && !document.querySelector('#v-sim.on')) return;
   const c=simCfg(), box=$('simBody');
   if(!SIM.started){ box.innerHTML=simSetupHTML(); return; }
+  if(MODE!=='sim'){ MODE='sim'; TSC={}; RES={pt:minBase(),sr:avgRSC()}; }
   if(SIM.done){ box.innerHTML=simSummaryHTML(); return; }
   const cur=SIM.cur; if(!cur){ box.innerHTML='<div class="card mut">Next player…</div>'; return; }
   const p=cur.p, v=verdict(p,cur.stage,cur.bid,cur.lead), myT=tstate(MY);
   const going=cur.closed? (cur.lead?`SOLD to ${esc(cur.lead)} for ${fmt(cur.bid)}`:"UNSOLD") : SIM.paused? "Paused" : cur.bid? "" : `Opens at ${fmt(v.ob)} — any bid?`;
   const pr=PROF[p.id];
   const canBid=!cur.closed && cur.lead!==MY && v.me.ok && v.next<=v.me.max;
-  const key=p.id+"|"+(cur.closed?1:0)+"|"+(SIM.paused?1:0);
+  const key=p.id+"|"+(cur.closed?1:0)+"|"+(SIM.paused?1:0)+"|"+tstate(MY).slots;
   const html=`<div class="row" style="margin-bottom:8px"><b class="cond" style="font-size:20px;color:var(--gold2)">${esc(cur.label)}</b><span class="mut">player ${cur.no} of ${cur.of}</span>
-     <span style="margin-left:auto" class="row"><button class="btn sec sm" id="sPause">${SIM.paused?"▶ Resume":"⏸ Pause"}</button>
+     <span style="margin-left:auto" class="row"><button class="btn ${SIM.paused?"":"sec"} sm" id="sPause">${SIM.paused?"▶ Resume":"⏸ Stop"}</button>
      <select id="sSpeed">${["fast","normal","slow"].map(x=>`<option value="${x}" ${c.speed===x?"selected":""}>${x[0].toUpperCase()+x.slice(1)}</option>`).join("")}</select>
      <label class="mut sm"><input type="checkbox" id="sFF" ${c.ff?"checked":""}> Fast-forward players I haven't marked</label>
+     <button class="btn sec sm" id="sSkipR" title="Computer teams finish this round without you">⏭ Skip rest of this round</button><button class="btn sec sm" id="sSkipA">⏭ Finish auction</button>
      <button class="btn sec sm" id="sStop">End and see results</button><button class="btn sec sm" id="sReset">Reset practice auction</button></span></div>
+   ${SIM.paused?`<div class="v v-care" style="margin-bottom:10px;font-size:14px">⏸ Stopped${SIM.restored&&SIM.savedAt?` — saved ${new Date(SIM.savedAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}`:""}. ${Object.keys(SIM.sales).length} players sold so far. Press <b>▶ Resume</b> to carry on from this player.</div>`:""}
+   ${(()=>{ const t=tstate(MY); return t.slots<=0 && !SIM.paused? `<div class="v v-go" style="margin-bottom:10px;font-size:14px">🦏 Your squad is complete (14/14). Use <b>⏭ Finish auction</b> to let the computer teams complete theirs.</div>`:""; })()}
    <div class="grid g2"><div class="card">
      <div class="row" style="justify-content:space-between;align-items:flex-start;flex-wrap:nowrap"><div class="row" style="align-items:flex-start;flex-wrap:nowrap">${pr&&pr.ph?`<img src="data:image/jpeg;base64,${pr.ph}" alt="" style="width:84px;height:106px;object-fit:cover;object-position:top;border-radius:10px;flex:none">`:""}<div>
        <div class="mut sm">${esc(p.id)} · ${esc(p.district||"")} · ${statLine(p)}</div>
@@ -880,11 +920,13 @@ function renderSim0(){
   $('sPause').onclick=simPauseToggle; $('sReset').onclick=()=>{ if(confirm("Reset the practice auction? Every player bought in practice goes back to the pool. Owners and your draft marks stay with their teams.")) simReset(); };
   $('sSpeed').onchange=e=>{ S.cfg.sim.speed=e.target.value; persist(); };
   $('sFF').onchange=e=>{ S.cfg.sim.ff=e.target.checked; persist(); };
-  $('sStop').onclick=()=>{ if(!confirm("End this practice auction and see the results?")) return; clearTimeout(SIM.timer); clearInterval(SIM.iv); SIM.done=true; renderSim(); };
+  $('sStop').onclick=()=>{ if(!confirm("End this practice auction now and see the results? (Players not yet called stay unsold.)")) return; clearTimeout(SIM.timer); clearInterval(SIM.iv); SIM.iv=null; SIM.done=true; simSave(); renderSim(); };
+  $('sSkipR').onclick=()=>{ if(confirm(`Let the computer teams finish the rest of the ${cur.label.split(" · ")[0]} without you? Each player goes to the computer team that values him most, within all the rules. You don't bid${cur.lead===MY&&!cur.closed?" (you keep the player you're leading on now)":""}.`)) simSkip("round"); };
+  $('sSkipA').onclick=()=>{ if(confirm("Let the computer teams finish the whole auction without you?")) simSkip("all"); };
   $('sMax').onchange=e=>{ setMark(p.id,"max",Math.max(0,Math.round(num(e.target.value)/100)*100)); renderSim(); };
 }
-function simPauseToggle(){ SIM.paused=!SIM.paused; const cur=SIM.cur;
-  if(!SIM.paused){ if(!cur||cur.closed){ simNext(); return; } cur.lastAt=Date.now(); simPlanAI(); if(!SIM.iv) SIM.iv=setInterval(simStep,250); }
+function simPauseToggle(){ SIM.paused=!SIM.paused; const cur=SIM.cur; simSave();
+  if(!SIM.paused){ if(!SIM.iv) SIM.iv=setInterval(simStep,250); if(!cur||cur.closed){ simNext(); return; } cur.lastAt=Date.now(); simPlanAI(); }
   renderSim(); }
 function simSetupHTML(){
   const c=simCfg(), dm=draftMap(), nd=Object.values(dm).reduce((a,l)=>a+l.length,0), tg=targets().length, mx=Object.values(S.marks).filter(m=>m.max).length, rl=Object.values(S.marks).filter(m=>m.role).length;
@@ -1026,6 +1068,7 @@ if(!IN_CLAUDE && !isLoggedIn()){ document.body.classList.add('locked'); showLogi
 else if(!IN_CLAUDE && STALE()) showLogin(`Your player data is from ${new Date(S.syncedAt).toLocaleDateString('en-IN')}, before the final pool. Log in once to load the final 248 and every player's preferred team. Your marks are kept.`);
 if(IN_CLAUDE && !P().length) syncSheet();
 
+try{ if(P().length) simLoad(); }catch(e){ console.log(e); }
 if(location.hash==='#live') show('live');
 refresh();
 </script>

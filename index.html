@@ -113,7 +113,7 @@ body.locked main,body.locked nav,body.locked #planBar{display:none!important}
   <div class="right"><span id="dataInfo"></span></div>
 </header>
 <nav id="tabs">
-  <button data-v="draft" class="on">1 · Draft marking</button>
+  <button data-v="draft" class="on" id="tabDraft">1 · Draft marking</button>
   <button data-v="pool">2 · Players &amp; my marks</button>
   <button data-v="plan">3 · My plan</button>
   <button data-v="teams">Teams</button>
@@ -130,7 +130,7 @@ body.locked main,body.locked nav,body.locked #planBar{display:none!important}
     <button class="btn" id="draftSave">💾 Save draft marks</button>
     <button class="btn sec sm" id="draftUndo">Discard changes</button>
     <button class="btn sec sm" id="draftClear">Clear all marks</button>
-    <label class="btn sec sm" style="display:inline-block" title="Excel or CSV with Reg ID and Team columns">Upload final draft list<input type="file" id="draftUp" accept=".xlsx,.xls,.csv" hidden></label>
+    <label class="btn sec sm" id="draftUpL" style="display:inline-block" title="Excel or CSV with Reg ID and Team columns">Upload final draft list<input type="file" id="draftUp" accept=".xlsx,.xls,.csv" hidden></label>
     <button class="btn sec sm" id="draftUnUp" hidden>Remove uploaded list</button>
   </div>
   <div class="grid g3 draft" id="draftGrid"></div>
@@ -208,6 +208,9 @@ const TEAMS=["Ayodhya Warriors","Devils of Chithrakoot","Gandhara Giants","Guard
 const SHEET_ID="1yLTJPg-2sh2xjuF8jVH6imyHxF99tVRmd8RvdStvZpw";
 const DATA_URL="https://script.google.com/macros/s/AKfycbwoPoxk_Dj38j_Vfky4xxNO5hCF-UMXnvTDFwy-1plSMYRzTpKA4lAvdmADPSBzzJrkHA/exec";
 const SEED={"draft": []};
+const FINAL_DRAFT=[["KNPL7-0059", "OWNER", "JAGUARS OF JHANSI"], ["KNPL7-0092", "JAGUARS OF JHANSI", "JAGUARS OF JHANSI"], ["KNPL7-0228", "JAGUARS OF JHANSI", "JAGUARS OF JHANSI"], ["KNPL7-0005", "OWNER", "SPARTANS OF NALANDA"], ["KNPL7-0062", "SPARTANS OF NALANDA", "SPARTANS OF NALANDA"], ["KNPL7-0089", "SPARTANS OF NALANDA", "SPARTANS OF NALANDA"], ["KNPL7-0002", "OWNER", "GUARDIANS OF KAMBOJA"], ["KNPL7-0054", "GUARDIANS OF KAMBOJA", "GUARDIANS OF KAMBOJA"], ["KNPL7-0030", "GUARDIANS OF KAMBOJA", "GUARDIANS OF KAMBOJA"], ["KNPL7-0047", "OWNER", "VAMOS VRINDAVAN"], ["KNPL7-0088", "VAMOS VRINDAVAN", "VAMOS VRINDAVAN"], ["KNPL7-0049", "VAMOS VRINDAVAN", "VAMOS VRINDAVAN"], ["KNPL7-0029", "OWNER", "MADHURA MAVERICKS"], ["KNPL7-0008", "MADHURA MAVERICKS", "MADHURA MAVERICKS"], ["KNPL7-0022", "MADHURA MAVERICKS", "MADHURA MAVERICKS"], ["KNPL7-0064", "OWNER", "KOMBANS OF PATALEEPUTHRA"], ["KNPL7-0081", "KOMBANS OF PATALEEPUTHRA", "KOMBANS OF PATALEEPUTHRA"], ["KNPL7-0009", "KOMBANS OF PATALEEPUTHRA", "KOMBANS OF PATALEEPUTHRA"], ["KNPL7-0040", "OWNER", "DEVILS OF CHITHRAKOOT"], ["KNPL7-0090", "DEVILS OF CHITHRAKOOT", "DEVILS OF CHITHRAKOOT"], ["KNPL7-0056", "DEVILS OF CHITHRAKOOT", "DEVILS OF CHITHRAKOOT"], ["KNPL7-0020", "OWNER", "PANCHAALA PANTHERS"], ["KNPL7-0011", "PANCHAALA PANTHERS", "PANCHAALA PANTHERS"], ["KNPL7-0017", "PANCHAALA PANTHERS", "PANCHAALA PANTHERS"], ["KNPL7-0069", "OWNER", "MIGHTY MITHILAS"], ["KNPL7-0012", "MIGHTY MITHILAS", "MIGHTY MITHILAS"], ["KNPL7-0173", "MIGHTY MITHILAS", "MIGHTY MITHILAS"], ["KNPL7-0007", "OWNER", "KURUKSHETRA YODHAS"], ["KNPL7-0037", "KURUKSHETRA YODHAS", "KURUKSHETRA YODHAS"], ["KNPL7-0001", "KURUKSHETRA YODHAS", "KURUKSHETRA YODHAS"], ["KNPL7-0018", "OWNER", "KALINGA UNITED"], ["KNPL7-0072", "KALINGA UNITED", "KALINGA UNITED"], ["KNPL7-0126", "KALINGA UNITED", "KALINGA UNITED"], ["KNPL7-0091", "OWNER", "KAALIYANZ OF DWARAKA"], ["KNPL7-0073", "KAALIYANZ OF DWARAKA", "KAALIYANZ OF DWARAKA"], ["KNPL7-0051", "KAALIYANZ OF DWARAKA", "KAALIYANZ OF DWARAKA"], ["KNPL7-0026", "OWNER", "AYODHYA WARRIORS"], ["KNPL7-0057", "AYODHYA WARRIORS", "AYODHYA WARRIORS"], ["KNPL7-0045", "AYODHYA WARRIORS", "AYODHYA WARRIORS"], ["KNPL7-0034", "OWNER", "GANDHARA GIANTS"], ["KNPL7-0023", "GANDHARA GIANTS", "GANDHARA GIANTS"], ["KNPL7-0150", "GANDHARA GIANTS", "GANDHARA GIANTS"], ["KNPL7-0048", "OWNER", "KNIGHTS OF KANCHI"], ["KNPL7-0028", "KNIGHTS OF KANCHI", "KNIGHTS OF KANCHI"], ["KNPL7-0013", "KNIGHTS OF KANCHI", "KNIGHTS OF KANCHI"], ["KNPL7-0071", "OWNER", "VARAHAS OF VIJAYANAGARA"], ["KNPL7-0063", "VARAHAS OF VIJAYANAGARA", "VARAHAS OF VIJAYANAGARA"], ["KNPL7-0201", "VARAHAS OF VIJAYANAGARA", "VARAHAS OF VIJAYANAGARA"]];   // frozen 27-11-2026: [regId, 'OWNER' or team, team]
+const FROZEN=FINAL_DRAFT.length>0;
+document.addEventListener('DOMContentLoaded',()=>{ if(FROZEN&&document.getElementById('tabDraft')) document.getElementById('tabDraft').textContent='1 · Final draft 🔒'; });
 const AVAIL={"KNPL7-0129": "11, 13, 14 Feb", "KNPL7-0144": "13, 14 Feb", "KNPL7-0166": "13, 14 Feb", "KNPL7-0175": "12, 13 Feb", "KNPL7-0178": "13, 14 Feb", "KNPL7-0181": "12, 13, 14 Feb", "KNPL7-0203": "12, 13, 14 Feb", "KNPL7-0205": "12, 13, 14 Feb", "KNPL7-0207": "13, 14 Feb", "KNPL7-0212": "12, 13, 14 Feb", "KNPL7-0215": "11, 12 Feb", "KNPL7-0229": "12, 13, 14 Feb", "KNPL7-0247": "13, 14 Feb", "KNPL7-0251": "12, 13, 14 Feb", "KNPL7-0263": "13, 14 Feb", "KNPL7-0265": "11, 12 Feb"};
 const PURSE=100000, SQUAD=14, CAP=560, BONUS=25, RES_PT=2000;
 const BASE_PT={CV:12000,CC:10000,DA:8000,DC:6000,RSE:4000,RSC:2000};
@@ -261,9 +264,9 @@ function setMark(id,k,v){ const m=S.marks[id]||(S.marks[id]={}); if(v===""||v==n
 
 /* ================= POOL, OWNERS, DRAFTS ================= */
 function inPool(p){ return (!S.poolIds || S.poolIds.includes(p.id)) && !/reject/i.test(p.regStatus||""); }
-function ownerOfTeam(team){ return P().find(p=>p.ownerOf && normTeam(p.ownerOf)===normTeam(team)); }
-function isOwner(p){ return !!(p.ownerOf && teamOf(p.ownerOf)); }
-function finalList(){ return (S.draftUpload&&S.draftUpload.length)? S.draftUpload : (S.draftFinal&&S.draftFinal.length? S.draftFinal : null); }
+function ownerOfTeam(team){ if(FROZEN){ const f=FINAL_DRAFT.find(r=>r[1]==='OWNER'&&normTeam(r[2])===normTeam(team)); if(f&&S.players[f[0]]) return S.players[f[0]]; } return P().find(p=>p.ownerOf && normTeam(p.ownerOf)===normTeam(team)); }
+function isOwner(p){ if(FROZEN&&FINAL_DRAFT.some(r=>r[1]==='OWNER'&&r[0]===p.id)) return true; return !!(p.ownerOf && teamOf(p.ownerOf)); }
+function finalList(){ if(FROZEN) return FINAL_DRAFT; return (S.draftUpload&&S.draftUpload.length)? S.draftUpload : (S.draftFinal&&S.draftFinal.length? S.draftFinal : null); }
 function confirmed(){ return !!finalList(); }
 // draft map: team -> [ids] (owner excluded)
 function draftMap(){
@@ -509,16 +512,16 @@ function renderDraft(){
   const nElig=P().filter(p=>inPool(p)&&!isOwner(p)&&prefOf(p)).length, nMark=Object.values(dm).reduce((a,l)=>a+l.length,0);
   const dl=Date.parse('2026-11-28T18:30:00+05:30')-Date.now(), dlTxt= dl>0? `${Math.floor(dl/864e5)}d ${Math.floor(dl%864e5/36e5)}h left` : "closed — upload the final draft list";
   const stale=STALE()? `<div class="v v-stop" style="margin-bottom:8px;font-size:14px">⚠ Player data is from ${new Date(S.syncedAt).toLocaleDateString('en-IN')} — before the final pool. <a href="#" id="staleGo" style="color:var(--gold2)">Log in to refresh</a> so every team's preferred players appear.</div>`:"";
-  $('draftHead').innerHTML= stale + (conf? `<b class="ok">Final draft list loaded${S.draftUpload&&S.draftUpload.length?" (uploaded)":" (from the sheet)"}</b> — ${nMark} drafted players. Marks are locked; the pool and the practice auction use this list.` :
+  $('draftHead').innerHTML= FROZEN? `${stale}<b class="ok">🔒 Draft closed and frozen on 27 Nov 2026</b> — all 16 teams submitted. <b>${16+nMark}</b> players are with the teams (16 owners + ${nMark} drafted); <b>${ORDER.length}</b> players go to the auction. The pool, team purses, Skill Rating and the practice auction all use this final draft.` : stale + (conf? `<b class="ok">Final draft list loaded${S.draftUpload&&S.draftUpload.length?" (uploaded)":" (from the sheet)"}</b> — ${nMark} drafted players. Marks are locked; the pool and the practice auction use this list.` :
     `<b>Probable draft marks</b> · ${nMark} marked · ${dirty?'<b class="warn">not saved yet — press Save to update the auction pool</b>':`saved${S.draftSavedAt?" "+new Date(S.draftSavedAt).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):""} · <b>${ORDER.length}</b> players in the auction pool <a href="#" data-go="pool" style="color:var(--gold2)">mark them →</a>`} · draft window closes <b>28 Nov, 6:30 PM</b> (${dlTxt}).<br>Each team lists the players in the final pool of 248 who chose it as preferred team: <b>${nElig}</b> players besides the owners. Players who chose "Any Team" go straight to the auction. Up to 2 per team besides the owner.`);
   if($('staleGo')) $('staleGo').onclick=e=>{ e.preventDefault(); IN_CLAUDE?syncSheet():showLogin("Log in to load the final pool and preferred teams."); };
-  $('draftClear').hidden=conf; $('draftSave').hidden=conf; $('draftUndo').hidden=conf||!dirty; $('draftUnUp').hidden=!(S.draftUpload&&S.draftUpload.length);
+  $('draftClear').hidden=conf; $('draftSave').hidden=conf; $('draftUndo').hidden=conf||!dirty; $('draftUnUp').hidden=FROZEN||!(S.draftUpload&&S.draftUpload.length); $('draftUpL').hidden=FROZEN;
   $('draftSave').textContent= dirty? "💾 Save draft marks (unsaved changes)" : "✔ Saved";
   $('draftSave').style.background= dirty? "var(--gold)" : "var(--panel2)"; $('draftSave').style.color= dirty? "#1a1205" : "var(--green)";
   const order=[MY,...TEAMS.filter(t=>t!==MY)];
   $('draftGrid').innerHTML=order.map(team=>{
     const o=ownerOfTeam(team), ids=dm[team]||[];
-    const pref=P().filter(p=>inPool(p)&&!isOwner(p)&&prefOf(p)===team).sort((a,b)=>(b.rating-a.rating));
+    const pref=FROZEN? [] : P().filter(p=>inPool(p)&&!isOwner(p)&&prefOf(p)===team).sort((a,b)=>(b.rating-a.rating));
     const extraConf=conf? ids.filter(id=>!pref.some(p=>p.id===id)).map(id=>S.players[id]) : [];
     const set=[o,...ids.map(i=>S.players[i])].filter(Boolean);
     const pts=set.reduce((a,p)=>a+draftPoint(p),0), sr=set.reduce((a,p)=>a+(p.rating||0),0);
@@ -526,9 +529,9 @@ function renderDraft(){
     const pl=p=>{ const on=ids.includes(p.id), m=mk(p.id); return `<div class="pl"><label><input type="checkbox" data-dr="${team}|${p.id}" ${on?"checked":""} ${conf?"disabled":""}> <span><b>${esc(p.name)}</b> <span class="mut sm">${esc(p.district||"")}</span></span></label>${tag(p.cat)} <b class="sm" style="width:24px;text-align:right">${p.rating}</b> <span class="mut sm" style="width:58px;text-align:right" title="Draft Point">${fmt(draftPoint(p))}</span>${m.st==="T"?" ★":""}</div>`; };
     return `<div class="card" ${team===MY?'style="border-color:var(--gold)"':""}><h3>${esc(team)}${team===MY?" 🦏":""}</h3>
       <div class="own">${o?`Owner: <b>${esc(o.name)}</b> ${tag(o.cat)} SR <b>${o.rating}</b> · Draft Point ${fmt(draftPoint(o))}`:'<span class="mut">Owner not found in data</span>'}</div>
-      ${pref.length?pref.map(pl).join(""):'<div class="mut sm">No player chose this team.</div>'}
-      ${extraConf.map(p=>`<div class="pl"><span>✔ <b>${esc(p.name)}</b> <span class="mut sm">(confirmed)</span></span>${tag(p.cat)} <b class="sm">${p.rating}</b></div>`).join("")}
-      <div class="sum"><span class="mut">${pref.length} eligible</span> · ${set.length}/3 drafted incl. owner · Draft Points <b>${fmt(pts)}</b> · purse left <b>${fmt(PURSE-pts)}</b> · SR <b>${sr}</b> · C ${t.g.C} · D ${t.g.D} ${iss?`<div class="bad">${esc(iss)}</div>`:""}</div></div>`;
+      ${FROZEN?"":pref.length?pref.map(pl).join(""):'<div class="mut sm">No player chose this team.</div>'}
+      ${extraConf.map(p=>`<div class="pl"><span>✔ <b>${esc(p.name)}</b> <span class="mut sm">${FROZEN?"KNPL7-"+esc(p.id.slice(6))+" · ":""}${FROZEN?"Draft Point "+fmt(draftPoint(p)):"(confirmed)"}</span></span>${tag(p.cat)} <b class="sm">${p.rating}</b></div>`).join("")}
+      <div class="sum">${FROZEN?"":`<span class="mut">${pref.length} eligible</span> · `}${set.length}/3 drafted incl. owner · Draft Points <b>${fmt(pts)}</b> · purse left <b>${fmt(PURSE-pts)}</b> · SR <b>${sr}</b> · C ${t.g.C} · D ${t.g.D} ${iss?`<div class="bad">${esc(iss)}</div>`:""}</div></div>`;
   }).join("");
 }
 document.addEventListener('change',e=>{

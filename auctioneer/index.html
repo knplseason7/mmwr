@@ -374,7 +374,7 @@ function teamEval(t, p, amount){
   const round=+$('round').value, live=ST.teams[t]||{rm:0,n:null}, sq=ST.squads[t]||[];
   const k={C:0,D:0,R:0,CV:0,CC:0,DA:0,DC:0,RSE:0,RSC:0}; let rat=0;
   sq.forEach(x=>{ const [code,g]=catOf(x.c); if(g)k[g]++; if(k[code]!=null)k[code]++; rat+=x.s||0; });
-  const n=live.n!=null?live.n:sq.length, places=Math.max(0,RULES.squad-n), purse=live.rm;
+  const n=live.n!=null?Math.max(live.n,sq.length):sq.length, places=Math.max(0,RULES.squad-n), purse=live.rm;
   const maxBid=places>0? purse-RULES.reserve*(places-1) : 0;
   let ok=places>0, why=places>0?"":"Squad full", catInfo={txt:"–",st:"g",all:""};
   // Skill Rating: squad + this player + average Rising Star Core for each other empty place
@@ -431,6 +431,7 @@ function handle(m){
   ST.on=true; ST.at=Date.now(); $('link').classList.add('on'); $('linkTxt').textContent="LIVE";
   if(m.type==="init"){
     ST.squads={};
+    (m.teams||[]).forEach(t=>DATA.filter(p=>p.dt&&normTeam(p.dt)===normTeam(t)).forEach(p=>addToSquad(t,p)));
     (m.teams||[]).forEach(t=>{ if(!ST.teams[t]) ST.teams[t]={rm:0,n:null}; });
     (m.players||[]).forEach(x=>{ if(x.team) addToSquad(x.team, findPlayer(x), x); });
     renderTeams(true); return;
@@ -493,7 +494,7 @@ function renderPlayer(p, info){
    <div class="idrow">${ph}<div style="min-width:0">
      <div class="reg">${esc(p.id)} · ${esc(p.d)}${p.style?` · ${esc(p.style)}`:""}</div>
      <div class="nm">${esc(p.n)}</div>
-     <div class="chips"><span class="cat" style="background:${col}">${esc(p.c)}</span><span class="srbig">${p.s}<small> Skill Rating</small></span><span class="tag">${esc(p.role)}</span>${p.f?'<span class="tag" style="border-color:rgba(134,210,196,.6);color:var(--teal)">NPL-5</span>':""}</div>
+     <div class="chips"><span class="cat" style="background:${col}">${esc(p.c)}</span><span class="srbig">${p.s}<small> Skill Rating</small></span><span class="tag">${esc(p.role)}</span>${p.dt?`<span class="tag" style="border-color:#f0b2b2;color:#f6c9c9">${p.own?"Owner":"Drafted"} · ${esc(p.dt)} · not in the auction</span>`:""}${p.f?'<span class="tag" style="border-color:rgba(134,210,196,.6);color:var(--teal)">NPL-5</span>':""}</div>
      ${AUC&&p===AUC?`<div class="selfnote" style="margin-top:8px">Our auctioneer is on the block — over to the panel for this one!</div>`:""}
    </div>${bid}</div>
    <div class="kh" id="kh">${chips.length?chips.join(""):'<span class="k-final">No titles or awards in the last 3 seasons</span>'}</div>
@@ -569,14 +570,14 @@ $('cocClear').onclick=()=>{ if(!Object.keys(COC).length) return; if(confirm('Cle
 let DEMO=null;
 function startDemo(){
   const TEAMS=["Kombans of Pataleeputhra","Madhura Mavericks","Mighty Mithilas","Kalinga United","Varahas of Vijayanagara","Kaaliyanz of Dwaraka","Guardians of Kamboja","Ayodhya Warriors","Jaguars of Jhansi","Gandhara Giants","Devils of Chithrakoot","Kurukshetra Yodhas","Vamos Vrindavan","Knights of Kanchi","Spartans of Nalanda","Panchaala Panthers"];
-  const by=c=>DATA.filter(p=>p.c===c);
+  const by=c=>DATA.filter(p=>p.c===c && !p.dt);
   const pool={CV:by("Conqueror Vanguard"),CC:by("Conqueror Core"),DA:by("Dominator Apex"),DC:by("Dominator Core"),RSE:by("Rising Star Elite"),RSC:by("Rising Star Core")};
   const take=c=>pool[c].shift();
   const plans=[["CV","DC","RSE"],["CC","DA","DC","DC","RSE","RSE","RSE","RSC"],["DC","RSE"],["CV","DA","DC","DC","RSE","RSE"],["CC","DC","RSE","RSE"],["DA","RSE","RSC"],["CV","DC"],["DC","DC","RSE","RSE","RSE","RSE","RSE","RSE","RSE","RSC"],["CC","DA","DC","RSE","RSE","RSE","RSE","RSE","RSE","RSE","RSC"],["DC","RSE","RSC"],["CV","RSE"],["DA","DC","RSE","RSE","RSC"],["RSE","RSC"],["CC","DC","DC","RSE","RSE"],["DC","DC","RSE"],["CV","DA","RSE","RSE","RSE"]];
   const purse=[61000,30500,72000,26500,48000,70000,62000,24000,21000,69000,58000,40000,80000,36000,66000,33000];
   const players=[], T={};
-  TEAMS.forEach((t,i)=>{ plans[i].forEach(c=>{ const p=take(c); if(p) players.push({pcode:'d'+p.id,name:p.n,reg:p.id,team:t}); }); T[t]={rm:purse[i],n:plans[i].length}; });
-  const pl=pool.DA[3]||DATA[10];
+  TEAMS.forEach((t,i)=>{ DATA.filter(p=>p.dt&&normTeam(p.dt)===normTeam(t)).forEach(p=>players.push({pcode:'d'+p.id,name:p.n,reg:p.id,team:t})); plans[i]=plans[i].slice(0,8); plans[i].forEach(c=>{ const p=take(c); if(p) players.push({pcode:'d'+p.id,name:p.n,reg:p.id,team:t}); }); T[t]={rm:purse[i],n:plans[i].length+3}; });
+  const pl=pool.DA[0]||pool.DC[0]||DATA.find(p=>!p.dt);
   DEMO={T,pl}; COC_REAL=COC; COC={}; renderCoc();
   handle({knplauc:1,type:'init',teams:TEAMS,players});
   handle({knplauc:1,type:'live',player:{pcode:'demo1',name:pl.n,reg:pl.id},bid:0,bidteam:'',teams:T});
